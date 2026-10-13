@@ -15,6 +15,7 @@ import os
 import sys
 import json
 import time
+import threading
 import urllib.request
 import urllib.error
 from pathlib import Path
@@ -61,6 +62,20 @@ TTS_VOICE = CFG.get('ttsVoice') or 'zh-CN-XiaoxiaoNeural'
 UPSTREAM = (CFG.get('baseUrl') or '').rstrip('/')
 API_KEY = CFG.get('apiKey') or ''
 MODEL = CFG.get('model') or 'Qwen3.6-35B-A3B-Vision'
+
+
+def _load_extensions_async():
+    """后台挂载扩展工具：11 个新内建（tools_extra）+ config.json mcpServers 远程 MCP。
+    远程连接需要数秒，不阻塞服务就绪；未连接成功也不影响对话与内建工具。"""
+    try:
+        import tools as _tools
+        _tools.load_extensions(CFG.get('mcpServers') or [], log=lambda m: print('[mcp]', m))
+    except Exception as e:
+        print('[mcp] 扩展装载异常：', e)
+
+
+threading.Thread(target=_load_extensions_async, daemon=True).start()
+
 
 app = FastAPI(title=APP_TITLE, docs_url=None, redoc_url=None)
 
@@ -159,7 +174,7 @@ def sse(obj):
 
 @app.post('/api/chat/completions')
 async def chat_completions(request: Request):
-    body = await request.json()
+    body = await _json_body(request)
     msgs_in = body.get('messages') or []
     # 服务端不信任前端 model/key：一律使用本地配置
     msgs = list(msgs_in)
@@ -224,11 +239,23 @@ async def chat_completions(request: Request):
 
 @app.get('/api/tools')
 def api_tools():
-    return {'tools': tools.describe(), 'export_dir': str(tools.export_dir())}
+    import tools as _tools
+    return {'tools': _tools.describe(), 'export_dir': str(_tools.export_dir()),
+            'mcp': _tools.REMOTE_STATUS,
+            'remote': any(t.get('remote') for t in _tools.REGISTRY)}
+
+async def _json_body(request):
+    """解析请求体 JSON；兼容非 UTF-8 客户端（如 Windows 命令行按 GBK 发送的场景）。"""
+    raw = await request.body()
+    try:
+        return json.loads(raw.decode('utf-8'))
+    except UnicodeDecodeError:
+        return json.loads(raw.decode('gbk', 'ignore'))
+
 
 @app.post('/api/tool')
 async def api_tool_call(request: Request):
-    b = await request.json()
+    b = await _json_body(request)
     return JSONResponse(tools.execute(b.get('name'), b.get('args') or {}))
 
 

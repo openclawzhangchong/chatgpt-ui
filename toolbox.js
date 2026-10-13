@@ -79,7 +79,13 @@
       soraModal.classList.add('open');
       fetch('/api/tools').then(function (r) { return r.json(); }).then(function (data) {
         const box = document.getElementById('tbToolList');
-        box.innerHTML = (data.tools || []).map(function (t) {
+        const mcpRows = (data.mcp || []).map(function (m) {
+          return '<div class="rc-tool" style="margin:0"><span>' + (m.status === '已连接' ? '🟢' : '🔴') + '</span>' +
+            '<span class="t-name">' + esc(m.name) + '</span>' +
+            '<span class="t-args" style="white-space:normal">' + esc(m.status) + ' · ' + m.tool_count + ' 个工具' +
+            (m.status !== '已连接' ? '（如为魔搭 MCP：URL 为个人专属 24 小时有效，需在广场重新复制）' : '') + '</span></div>';
+        }).join('');
+        box.innerHTML = (mcpRows || '') + (data.tools || []).map(function (t) {
           return '<div class="rc-tool" style="margin:0"><span>🔧</span><span class="t-name">' + esc(t.name) +
             '</span><span class="t-args" style="white-space:normal">' + esc(t.description) + '</span></div>';
         }).join('') || '<div class="sub-desc">无工具</div>';

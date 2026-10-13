@@ -6,9 +6,27 @@
 ## [Unreleased]
 
 ### 计划中
-- 上下文压缩算法实现（RC_compress 钩子已预留）
-- 多会话/多人隔离（IndexedDB schema 已预留 owner 字段）
+- LLM 摘要式上下文压缩（当前为确定性折叠版）
 - 设置弹窗语音 Tab 真实化（音色选择）
+
+## [3.1.0] - 2026-10-14
+
+**MCP 工具扩充 + 系统托盘 + 上下文压缩**：工具总数 6 → 23，新增托盘常驻与上下文自动折叠。
+
+### Added
+- **远程 MCP 客户端**（mcp_client.py）：通用 JSON-RPC 2.0 客户端，支持 streamable HTTP / SSE / stdio 三种传输；按标准 `mcpServers` 配置接入，工具自动合并进注册表（工具名前缀 `ms_<服务器>_<工具>`）
+- **实测接通 2 个公开 MCP 服务器**：DeepWiki（GitHub 仓库文档问答，3 工具）+ Microsoft Learn（官方文档搜索/代码示例，3 工具）
+- **ModelScope 魔搭 MCP 适配位**：config.json `mcpServers` 已留位——在魔搭广场复制个人 SSE URL（24h 有效）填入即生效，工具箱面板显示连接状态
+- **11 个新内建工具**：read_text_file / write_text_file / list_directory / clipboard_read / clipboard_write / take_screenshot / open_url / system_info / get_weather / current_time / calculate（工具总数达 23）
+- **Windows 系统托盘**：关闭窗口不退出、退到托盘；托盘菜单「显示主窗口 / 退出程序」；启动气泡提示
+- **上下文压缩**（compress.js）：`window.RC_compress` 钩子落地——超 8 万字符预算时先折叠较早消息中的图片、再从最旧丢弃，始终保留 system 与最近 6 条
+
+### Fixed
+- get_weather：wttr.in 在境内网络返回落地页 HTML → Open-Meteo 兜底 + 常见中国城市拼音映射
+- 请求体 JSON 解析兼容非 UTF-8 客户端（GBK 兜底）
+
+### Security
+- 新增工具路径守卫：禁止访问 Windows/Program Files 系统目录；open_file 白名单不变
 
 ## [3.0.0] - 2026-10-13
 
@@ -71,7 +89,8 @@
 - 移动端竖屏 / PC 横屏双布局，侧边栏抽屉式滑出
 - 单文件架构：HTML + CSS + JS 全内联，零依赖、零构建、零外部请求
 
-[Unreleased]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v3.1.0...HEAD
+[3.1.0]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v2.0.0...v3.0.0
 [2.0.0]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/openclawzhangchong/chatgpt-ui/releases/tag/v1.0.0

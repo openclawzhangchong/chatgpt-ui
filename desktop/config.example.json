@@ -6,5 +6,10 @@
   "temperature": 0.7,
   "port": 18765,
   "ttsVoice": "zh-CN-XiaoxiaoNeural",
+  "mcpServers": [
+    {"name": "deepwiki", "transport": "http", "url": "https://mcp.deepwiki.com/mcp", "comment": "GitHub 仓库文档问答（公开免鉴权）"},
+    {"name": "mslearn", "transport": "http", "url": "https://learn.microsoft.com/api/mcp", "comment": "微软官方文档搜索（公开免鉴权）"},
+    {"name": "modelscope-fetch", "transport": "sse", "url": "", "comment": "魔搭 MCP 广场复制你的 SSE URL 填入（个人专属 24h 有效）"}
+  ],
   "_说明": "复制本文件为 config.json 并填入真实配置。EXE 启动时优先读取 EXE 同目录的 config.json。TODO(Worker): 将来配置改为从 Worker/数据库下发。"
 }

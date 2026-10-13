@@ -21,7 +21,7 @@ DESKTOP_CANDIDATES = [
     os.path.join(os.path.expanduser('~'), 'OneDrive', 'Desktop'),
 ]
 
-FRONTEND_FILES = ['index.html', 'realchat.js', 'storage.js', 'tts.js', 'toolbox.js', 'config.example.js']
+FRONTEND_FILES = ['index.html', 'realchat.js', 'storage.js', 'tts.js', 'toolbox.js', 'compress.js', 'config.example.js']
 
 
 def step_sync_ui():

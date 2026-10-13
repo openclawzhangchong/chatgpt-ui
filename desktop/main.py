@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-main.py · ChatGPT UI 桌面版入口
-Python 做壳：uvicorn 起本地服务(127.0.0.1) → pywebview 开窗口加载 UI。
-WebView2 缺失时自动降级为系统浏览器打开。
-崩溃日志：%TEMP%/ChatGPT-UI.log（窗口模式下排查问题的唯一入口）
+main.py · ChatGPT UI 桌面版入口（v3.1）
+- uvicorn 本地服务（127.0.0.1，随机端口防冲突）
+- pywebview 主窗口
+- **Windows 系统托盘**（右下角）：关闭窗口不退出，退到托盘；托盘菜单 显示/退出
+- 崩溃日志：%TEMP%/ChatGPT-UI.log
 """
+import os
 import socket
 import threading
 import time
 import traceback
 import webbrowser
-import os
 
 LOG = os.path.join(os.environ.get('TEMP', '.'), 'ChatGPT-UI.log')
 
@@ -38,12 +39,66 @@ def run_uvicorn(app, port):
     try:
         import uvicorn
         log('uvicorn starting on 127.0.0.1:%d' % port)
-        # log_config=None：--windowed 打包后没有 stdout，uvicorn 默认 formatter
-        # 调 sys.stdout.isatty() 会崩（AttributeError），必须禁用其内置日志配置
+        # log_config=None：--windowed 打包后无 stdout，uvicorn 默认 formatter 调 isatty() 会崩
         uvicorn.run(app, host='127.0.0.1', port=port, log_level='warning', log_config=None)
         log('uvicorn exited')
     except Exception:
         log('uvicorn thread crashed:\n' + traceback.format_exc())
+
+
+def _make_tray_icon():
+    from PIL import Image, ImageDraw
+    img = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle([4, 4, 60, 60], radius=14, fill=(16, 185, 129, 255))
+    d.rectangle([20, 22, 26, 42], fill=(255, 255, 255, 255))   # 字母 A
+    d.line([26, 42, 36, 22], fill=(255, 255, 255, 255), width=4)
+    d.line([33, 34, 43, 34], fill=(255, 255, 255, 255), width=3)
+    return img
+
+
+def run_tray(window_holder):
+    """托盘线程：常驻右下角；关闭窗口→隐藏；菜单：显示主窗口 / 退出。"""
+    try:
+        import pystray
+    except Exception as e:
+        log('pystray 不可用，托盘未启用：%s' % e)
+        return
+    state = {'icon': None}
+
+    def do_show():
+        w = window_holder.get('window')
+        if w:
+            try:
+                w.show()
+            except Exception as e:
+                log('托盘 show 失败：%s' % e)
+
+    def do_quit():
+        log('托盘退出')
+        try:
+            state['icon'].stop()
+        except Exception:
+            pass
+        os._exit(0)
+
+    menu = pystray.Menu(
+        pystray.MenuItem('显示主窗口', do_show, default=True),
+        pystray.MenuItem('退出程序', do_quit),
+    )
+    icon = pystray.Icon('ChatGPT-UI', _make_tray_icon(), 'ChatGPT UI 桌面版', menu)
+    state['icon'] = icon
+    log('托盘线程启动')
+
+    def _welcome():
+        time.sleep(1.5)
+        try:
+            icon.notify('ChatGPT-UI 已启动 · 关闭窗口会退到托盘，右键图标可退出', 'ChatGPT UI')
+        except Exception:
+            pass
+
+    threading.Thread(target=_welcome, daemon=True).start()
+    icon.run()
 
 
 def main():
@@ -66,11 +121,26 @@ def main():
             time.sleep(0.25)
     log('server ready: %s' % ok)
 
+    window_holder = {'window': None}
+
     try:
         import webview
-        webview.create_window('ChatGPT · 复刻版', url, width=1280, height=860, min_size=(420, 600))
-        webview.start(private_mode=False)
-        log('webview closed normally')
+        window = webview.create_window('ChatGPT · 复刻版', url, width=1280, height=860, min_size=(420, 600))
+        window_holder['window'] = window
+
+        def on_closing():
+            log('窗口关闭 → 隐藏到托盘')
+            try:
+                window.hide()
+            except Exception:
+                pass
+            return False  # 取消关闭，保留托盘常驻
+
+        window.events.closing += on_closing
+
+        threading.Thread(target=run_tray, args=(window_holder,), daemon=True).start()
+        webview.start(private_mode=False)  # 持久化 WebView2 用户目录（IndexedDB 不丢）
+        log('webview exited')
     except Exception:
         log('pywebview failed, fallback browser:\n' + traceback.format_exc())
         webbrowser.open(url)

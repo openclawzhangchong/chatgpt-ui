@@ -258,3 +258,41 @@ def execute(name, args):
             except Exception as e:
                 return {'ok': False, 'text': '工具执行失败：%s' % e}
     return {'ok': False, 'text': '未知工具：%s' % name}
+
+
+# ================= v3.1 扩展装载（内建扩充 + 远程 MCP） =================
+REMOTE_STATUS = []  # [{name, status, server, tool_count}] 供 /api/tools 展示
+
+
+def load_extensions(mcp_conf_list=None, log=print):
+    """启动时挂载：① 11 个新内建工具（tools_extra）② config.json mcpServers 远程 MCP。
+    返回挂载的远程工具数。幂等保护：重复调用不会重复注册。"""
+    import tools_extra
+    existing = {t['name'] for t in REGISTRY}
+    added = 0
+    for t in tools_extra.builtin_tools():
+        if t['name'] not in existing:
+            REGISTRY.append(t)
+            added += 1
+    remote_count = 0
+    for conf in (mcp_conf_list or []):
+        name = conf.get('name') or 'mcp'
+        if not (conf.get('url') or conf.get('command')):
+            continue
+        try:
+            import mcp_client
+            remote = mcp_client.load_remote_tools([conf], log=log)
+        except Exception as e:
+            log('MCP[%s] 装载失败：%s' % (name, str(e)[:200]))
+            remote = []
+        cli_tools = [t for t in remote if t.get('remote')]
+        server_name = ''
+        for t in remote:
+            if t['name'] not in {x['name'] for x in REGISTRY}:
+                REGISTRY.append({'name': t['name'], 'description': t['description'],
+                                 'inputSchema': t['inputSchema'], 'handler': t['handler'], 'remote': True})
+                remote_count += 1
+        REMOTE_STATUS.append({'name': name, 'status': '已连接' if remote else '未连接',
+                              'server': '', 'tool_count': len(cli_tools)})
+    log('扩展装载完成：新增内建 %d 个，远程 MCP 工具 %d 个，注册表共 %d 个' % (added, remote_count, len(REGISTRY)))
+    return remote_count

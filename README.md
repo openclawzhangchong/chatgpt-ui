@@ -1,8 +1,8 @@
 # ChatGPT UI —— ChatGPT 完美复刻（真实对话 · Python 桌面版）
 
-> 100% 还原 ChatGPT 官方界面观感，接入 OpenAI 兼容大模型 API **真实对话**；v3.0 起 Python 打包为 Windows 桌面 EXE，对话中 AI 可调用**本地 MCP 工具**直接生成 Word / Excel / PPT、操作桌面文件、抓取网页。
+> 100% 还原 ChatGPT 官方界面观感，接入 OpenAI 兼容大模型 API **真实对话**；v3.0 起 Python 打包为 Windows 桌面 EXE，对话中 AI 可调用 **23 个本地/远程 MCP 工具**直接生成 Word / Excel / PPT、操作桌面文件、抓取网页、查天气、查文档。
 
-![Version](https://img.shields.io/badge/version-v3.0.0-19c37d) ![License](https://img.shields.io/badge/license-MIT-blue) ![Tech](https://img.shields.io/badge/stack-HTML%20%2B%20JS%20%2B%20Python%20%E5%A3%B3-orange) ![Deps](https://img.shields.io/badge/frontend%20deps-0-success)
+![Version](https://img.shields.io/badge/version-v3.1.0-19c37d) ![License](https://img.shields.io/badge/license-MIT-blue) ![Tech](https://img.shields.io/badge/stack-HTML%20%2B%20JS%20%2B%20Python%20%E5%A3%B3-orange) ![MCP](https://img.shields.io/badge/MCP%20tools-23-blueviolet) ![Frontend%20deps](https://img.shields.io/badge/frontend%20deps-0-success)
 
 ## ✨ 项目简介
 
@@ -24,10 +24,27 @@
 **桌面版（v3.0 新增）**
 
 - 🖥️ **单文件 EXE**：PyInstaller 打包，双击即用，Python 壳（pywebview + 本地服务）
-- 🧰 **本地 MCP 工具**：对话中 AI 自动调用——生成 Word / Excel / PPT 到桌面、查看并打开桌面文件、抓取网页；工具调用过程在气泡内可视化
+- 🖥️ **系统托盘**：关闭窗口不退出、退到托盘常驻；托盘菜单「显示主窗口 / 退出程序」
+- 🧰 **23 个工具**（17 内建 + 6 远程 MCP），对话中 AI 自动调用：
+  - 办公产出：`create_word` / `create_excel` / `create_ppt`（落盘桌面 `chatgpt-ui-exports/`）
+  - 本机操作：`list_desktop_files` / `open_file` / `list_directory` / `read_text_file` / `write_text_file` / `take_screenshot`
+  - 系统信息：`system_info` / `current_time` / `get_weather` / `calculate` / `clipboard_read` / `clipboard_write` / `open_url`
+  - 联网抓取：`fetch_webpage`
+  - **远程 MCP**（实测接通）：DeepWiki（GitHub 仓库文档问答）+ Microsoft Learn（官方文档搜索）；工具调用过程在气泡内可视化
 - 💾 **会话持久化**：IndexedDB 存储，刷新/重启不丢聊天记录
+- 🗜️ **上下文压缩**：超 8 万字符自动折叠较早图片与历史，始终保留系统提示与最近对话
 - 🔊 **朗读**：Edge TTS（联网）+ Windows SAPI 离线兜底
-- 🧩 **菜单换血**：工具箱（查看本机工具）/ 导出中心（会话导出 Word、Markdown）/ 关于本应用
+- 🧩 **菜单换血**：工具箱（工具清单+MCP连接状态）/ 导出中心（会话导出 Word、Markdown）/ 关于本应用
+
+**接入你自己的 MCP 服务器**（含魔搭 ModelScope）：编辑 EXE 旁的 `config.json`，在 `mcpServers` 数组填 URL 即可（支持 streamable HTTP / SSE / stdio 三种传输，与 Cherry Studio / Claude Desktop 配置同构）：
+
+```json
+"mcpServers": [
+  {"name": "modelscope-fetch", "transport": "sse", "url": "https://mcp.api-inference.modelscope.cn/sse/你的专属ID"}
+]
+```
+
+> 魔搭 MCP 广场的托管 URL 是**个人专属且 24 小时有效**：登录 modelscope.cn → MCP 广场 → 服务详情页复制 SSE URL，粘贴到 config.json，重启 EXE 生效；过期后重新复制。工具箱面板可查看连接状态。
 
 **界面复刻（v1.0）**
 
@@ -76,12 +93,15 @@ chatgpt-ui/
 ├── storage.js          # v3.0 IndexedDB 会话持久化
 ├── tts.js              # v3.0 朗读（Edge TTS / SAPI，走桌面端本地服务）
 ├── toolbox.js          # v3.0 菜单换血（工具箱 / 导出中心 / 关于）
+├── compress.js         # v3.1 上下文压缩（RC_compress 钩子）
 ├── config.example.js   # 网页版 API 配置模板（入库）
 ├── config.js           # 网页版真实配置（gitignore，本地自建）
 ├── desktop/            # v3.0 Python 桌面版
-│   ├── main.py         #   入口：pywebview 窗口 + uvicorn 本地服务
+│   ├── main.py         #   入口：pywebview 窗口 + 托盘 + uvicorn 本地服务
 │   ├── server.py       #   OpenAI 兼容 SSE 代理 + MCP 工具循环 + TTS + 导出
-│   ├── tools.py        #   本地工具注册表（Word/Excel/PPT/桌面文件/网页抓取）
+│   ├── tools.py        #   本地工具注册表（v3.0 六件套 + 扩展装载入口）
+│   ├── tools_extra.py  #   v3.1 新增 11 个内建工具
+│   ├── mcp_client.py   #   通用 MCP 客户端（HTTP / SSE / stdio 三传输）
 │   ├── build_desktop.py#   一键打包流水线（同步前端 → PyInstaller → 拷桌面）
 │   └── config.example.json
 ├── HANDOFF.md          # 交接清单：已完成基线 / 待办 / 红线
@@ -98,6 +118,7 @@ chatgpt-ui/
 | v1.0 | 完美复刻静态版 | ✅ 已完成 |
 | v2.0 | 接入大模型 API，真实对话 + 流式 + 图片理解 | ✅ 已完成 |
 | v3.0 | Python 桌面版 EXE + 本地 MCP 工具 + IndexedDB + Edge TTS | ✅ 已完成 |
+| v3.1 | 远程 MCP 客户端（DeepWiki/MS Learn 实测接通）+ 11 个新工具 + 系统托盘 + 上下文压缩 | ✅ 已完成 |
 | v3.x | 上下文压缩（RC_compress 钩子已预留）/ 多会话隔离 | 📋 规划中 |
 | v3.x | API 配置改从 Worker / 数据库动态获取 | 📋 规划中 |
 | v4.0 | 安全加固（服务端代理 Key、对外部署） | 📋 规划中 |
