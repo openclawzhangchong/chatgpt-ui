@@ -1,0 +1,10 @@
+{
+  "baseUrl": "https://jiuyeke.cn/v1",
+  "apiKey": "sk-xxxxxxxxxxxxxxxxxxxxxxxx",
+  "model": "Qwen3.6-35B-A3B-Vision",
+  "maxTokens": 16384,
+  "temperature": 0.7,
+  "port": 18765,
+  "ttsVoice": "zh-CN-XiaoxiaoNeural",
+  "_说明": "复制本文件为 config.json 并填入真实配置。EXE 启动时优先读取 EXE 同目录的 config.json。TODO(Worker): 将来配置改为从 Worker/数据库下发。"
+}

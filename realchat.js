@@ -36,6 +36,12 @@
     margin-left:2px; animation:rc-blink .8s step-end infinite; }
   @keyframes rc-blink { 50% { opacity:0; } }
   .rc-err { color:var(--danger); font-size:14px; margin:6px 0; }
+  .rc-tool { font-size:12.5px; color:var(--text-secondary); background:var(--bg-hover); border:1px solid var(--border);
+    border-radius:8px; padding:5px 10px; margin:6px 0; display:flex; align-items:center; gap:6px; }
+  .rc-tool .t-name { color:var(--text-primary); font-weight:600; }
+  .rc-tool .t-args { color:var(--text-tertiary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:420px; }
+  .rc-tool .t-ok { color:var(--accent); }
+  .rc-tool .t-fail { color:var(--danger); }
   .rc-user-img { max-width:180px; max-height:180px; border-radius:8px; display:block; margin-top:8px; border:1px solid var(--border); }
   .mm-demo { font-size:11px; color:var(--text-tertiary); border:1px solid var(--border); border-radius:4px;
     padding:0 4px; margin-left:6px; vertical-align:1px; }
@@ -181,10 +187,15 @@
         msgs.push({ role: 'assistant', content: m.text });
       }
     }
+    // RC_compress 钩子（v3.0 预留）：上下文压缩策略将来在此注入，桌面版/扩展可覆盖 window.RC_compress
+    if (typeof window.RC_compress === 'function') {
+      try { return window.RC_compress(msgs); } catch (_) { }
+    }
     return msgs;
   }
 
   /* ================= SSE 流式请求 ================= */
+  var opts = {}; // 事件扩展点：onEvent(kind, payload)
   function streamChat(apiMsgs, onReasoning, onContent) {
     aborter = new AbortController();
     return fetch(API_BASE + '/chat/completions', {
@@ -228,6 +239,8 @@
               const d = (j.choices && j.choices[0] && j.choices[0].delta) || {};
               if (d.reasoning_content) onReasoning(d.reasoning_content);
               if (d.content) onContent(d.content);
+              if (d.rc_tool && opts.onEvent) opts.onEvent('tool', d.rc_tool);
+              if (d.rc_error && opts.onEvent) opts.onEvent('error', { name: d.rc_error });
             } catch (_) { /* 忽略非 JSON 行 */ }
           }
           return pump();
@@ -259,6 +272,7 @@
       '<div style="min-width:0"><div class="ai-body">' +
       '<div class="rc-think">💭 思考中…</div>' +
       '<div class="rc-reason"></div>' +
+      '<div class="rc-tools"></div>' +
       '<div class="rc-content"></div>' +
       '</div></div>';
     box.appendChild(div);
@@ -267,10 +281,24 @@
       div: div,
       think: div.querySelector('.rc-think'),
       reason: div.querySelector('.rc-reason'),
+      toolsEl: div.querySelector('.rc-tools'),
       content: div.querySelector('.rc-content'),
       reasoning: '',
       answer: '',
       started: false,
+      addTool: function (phase, name, tail) {
+        let chip = this.toolsEl.querySelector('.rc-tool[data-name="' + name + '"]:last-of-type');
+        if (phase === 'call' || !chip) {
+          chip = document.createElement('div');
+          chip.className = 'rc-tool';
+          chip.dataset.name = name;
+          chip.innerHTML = '<span>🔧</span><span class="t-name">' + esc(name) + '</span><span class="t-args"></span><span class="t-state"></span>';
+          this.toolsEl.appendChild(chip);
+        }
+        if (phase === 'call') chip.querySelector('.t-args').textContent = tail || '';
+        else chip.querySelector('.t-state').innerHTML = tail === '完成' ? '<span class="t-ok">✓ 完成</span>' : '<span class="t-fail">' + esc(tail || '失败') + '</span>';
+        box.scrollTop = box.scrollHeight;
+      },
       setReasoning: function (t) {
         this.reasoning += t;
         this.reason.textContent = this.reasoning;
@@ -304,6 +332,17 @@
   /* ================= 核心流式执行（send / regen 共用） ================= */
   function runStream(chat) {
     const ui = createStreamMsg();
+    opts = {
+      onEvent: function (kind, payload) {
+        if (kind === 'tool') {
+          ui.addTool(payload.phase, payload.name, payload.phase === 'call'
+            ? JSON.stringify(payload.args || {})
+            : (payload.ok ? '完成' : payload.text || '失败'));
+        } else if (kind === 'error') {
+          ui.error('服务端错误：' + payload.name);
+        }
+      }
+    };
     setStopUI(true);
     streamChat(
       buildApiMessages(chat),
@@ -381,12 +420,7 @@
   // TODO(Worker): 模型清单将来可从 Worker/数据库下发，当前以真实接入的 Qwen 模型为主项
   (function realignModels() {
     const real = { id: CFG_OK ? CFG.model : 'qwen3.6', name: 'Qwen 3.6 35B-A3B', desc: '视觉多模态 · 262K 上下文 · 已接入真实 API', real: true };
-    const demo = [
-      { id: '5.2', name: 'ChatGPT 5.2', desc: '复刻演示项 · 请求实际仍走 Qwen 模型' },
-      { id: '5.2-thinking', name: 'ChatGPT 5.2 Thinking', desc: '复刻演示项 · 请求实际仍走 Qwen 模型' },
-      { id: '5.2-pro', name: 'ChatGPT 5.2 Pro', desc: '复刻演示项 · 请求实际仍走 Qwen 模型' },
-      { id: '4.1', name: 'ChatGPT 4.1', desc: '复刻演示项 · 请求实际仍走 Qwen 模型' }
-    ];
+    const demo = []; // v3.0: 假 ChatGPT 模型项已移除，菜单只保留真实接入的模型
     MODELS.length = 0;
     MODELS.push(real);
     demo.forEach(function (d) { MODELS.push(d); });

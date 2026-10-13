@@ -6,8 +6,34 @@
 ## [Unreleased]
 
 ### 计划中
-- 使用 Python（PyWebview 等）打包为 Windows 桌面客户端
-- API 配置改为从 Worker / 数据库动态获取（见 HANDOFF.md）
+- 上下文压缩算法实现（RC_compress 钩子已预留）
+- 多会话/多人隔离（IndexedDB schema 已预留 owner 字段）
+- 设置弹窗语音 Tab 真实化（音色选择）
+
+## [3.0.0] - 2026-10-13
+
+**Python 桌面版**：pywebview 壳 + 本地 MCP 风格工具 + 离线语音 + 会话持久化，交付单文件 EXE。
+
+### Added
+- **桌面版**：Python 壳（pywebview + uvicorn/FastAPI），`build_desktop.py` 一键 PyInstaller 单文件打包，双击 EXE 即用
+- **本地 MCP 工具体系**：`tools.py` 工具注册表（OpenAI JSON Schema 兼容 MCP 描述符），对话中 AI 自动调用：
+  - `create_word` / `create_excel` / `create_ppt`：对话直接产出 Office 文档，落盘桌面 `chatgpt-ui-exports/`
+  - `list_desktop_files` / `open_file`：本机文件查看与打开（白名单限制桌面与导出目录）
+  - `fetch_webpage`：网页抓取
+  - 工具过程以 `rc_tool` SSE 事件透传，AI 气泡内渲染「🔧 工具调用 ✓」芯片
+- **会话持久化**：IndexedDB（sessions 按会话记录级存储 + meta 状态仓），刷新/重启不丢历史；预留压缩/多人字段
+- **朗读**：Edge TTS（联网）+ Windows SAPI 离线兜底双通道
+- **菜单换血**（UI 框架零改动）：Sora→工具箱（工具清单）、资料库→导出中心（会话导出 Word/Markdown）、升级方案→关于本应用、创建公开链接→复制对话全文、退出登录→清空本地数据
+- **导出中心**：当前会话一键导出 Word / Markdown
+- **架构预留**：`RC_compress` 上下文压缩钩子（realchat.js）、标准 MCP 端点扩展位（tools.py 注册表同构）
+
+### Fixed
+- 上游请求补浏览器 UA（默认 Python UA 被 Cloudflare 403 拦截）
+- 静态 catch-all 路由后置，修复 /api/* 被劫持
+- 上游连接超时收紧（600s→100s）+ 3 次重试，快速暴露线路抖动
+
+### Security
+- 桌面版 API Key 由 Python 侧持有（EXE 旁 `config.json`），前端不再持有真实 key
 
 ## [2.0.0] - 2026-10-13
 
@@ -45,6 +71,7 @@
 - 移动端竖屏 / PC 横屏双布局，侧边栏抽屉式滑出
 - 单文件架构：HTML + CSS + JS 全内联，零依赖、零构建、零外部请求
 
-[Unreleased]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v2.0.0...v3.0.0
 [2.0.0]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/openclawzhangchong/chatgpt-ui/releases/tag/v1.0.0

@@ -22,3 +22,10 @@ build/
 # Logs / temp
 *.log
 tmp/
+
+# 桌面版（Python 壳）构建产物与本地配置
+desktop/ui/
+desktop/dist/
+desktop/build/
+desktop/*.spec
+desktop/config.json
