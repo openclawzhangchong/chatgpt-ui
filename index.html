@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChatGPT - 复刻静态页 V3</title>
+<style>
+  :root {
+    --bg-main: #212121;
+    --bg-sidebar: #171717;
+    --bg-hover: #2f2f2f;
+    --bg-composer: #303030;
+    --bg-bubble: #303030;
+    --text-primary: #ececec;
+    --text-secondary: #b4b4b4;
+    --text-tertiary: #8f8f8f;
+    --border: #ffffff1a;
+    --btn-bg: #ffffff;
+    --btn-text: #0d0d0d;
+    --overlay: #00000080;
+    --accent: #19c37d;
+    --danger: #ef4444;
+  }
+  html[data-theme="light"] {
+    --bg-main: #ffffff;
+    --bg-sidebar: #f9f9f9;
+    --bg-hover: #ececec;
+    --bg-composer: #f4f4f4;
+    --bg-bubble: #e8e8e8;
+    --text-primary: #0d0d0d;
+    --text-secondary: #5d5d5d;
+    --text-tertiary: #8f8f8f;
+    --border: #0000001a;
+    --btn-bg: #0d0d0d;
+    --btn-text: #ffffff;
+    --overlay: #00000040;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", Söhne, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    display: flex; height: 100vh; height: 100dvh; overflow: hidden;
+    background: var(--bg-main); color: var(--text-primary);
+  }
+  button { font-family: inherit; }
+
+  /* ================= 侧边栏 ================= */
+  .sidebar {
+    width: 260px; min-width: 260px; background: var(--bg-sidebar);
+    display: flex; flex-direction: column; padding: 10px;
+    transition: transform .25s ease; z-index: 40; position: relative;
+  }
+  .sidebar-top { display: flex; flex-direction: column; gap: 2px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 9px 10px; border-radius: 8px; cursor: pointer;
+    font-size: 14px; color: var(--text-primary); user-select: none;
+  }
+  .nav-item:hover { background: var(--bg-hover); }
+  .nav-item .icon { width: 20px; height: 20px; flex-shrink: 0; opacity: .9; }
+  .nav-item .chevron { margin-left: auto; opacity: .6; }
+
+  .search-box {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; margin: 4px 0; border-radius: 24px;
+    border: 1px solid var(--border); font-size: 14px; color: var(--text-secondary);
+    cursor: pointer;
+  }
+  .search-box:hover { background: var(--bg-hover); }
+
+  .sidebar-section { margin-top: 18px; padding: 0 10px 6px; font-size: 12px; color: var(--text-tertiary); }
+  .chat-list { flex: 1; min-height: 0; overflow-y: auto; margin-top: 4px; }
+  .chat-list::-webkit-scrollbar { width: 6px; }
+  .chat-list::-webkit-scrollbar-thumb { background: var(--border); }
+  .chat-item {
+    padding: 9px 10px; border-radius: 8px; font-size: 14px;
+    color: var(--text-primary); cursor: pointer; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .chat-item:hover { background: var(--bg-hover); }
+  .chat-item.active { background: var(--bg-hover); }
+
+  .sidebar-bottom { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 8px; position: relative; }
+  .upgrade { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+  .upgrade:hover { background: var(--bg-hover); }
+  .upgrade .plan { font-size: 12px; color: var(--text-tertiary); }
+  .user-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+  .user-row:hover { background: var(--bg-hover); }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, #7c5cff, #19c37d);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: #fff; flex-shrink: 0;
+  }
+  .user-name { font-size: 14px; }
+
+  /* 通用弹出菜单（Logo / 分享） */
+  .logo-menu { bottom: auto; top: 6px; }
+  .share-menu { bottom: auto; top: 52px; left: auto; right: 56px; }
+  .gpt-sub { display: none; flex-direction: column; gap: 2px; margin: 0 0 4px 42px; }
+  .gpt-sub.open { display: flex; }
+  .gpt-item { padding: 7px 10px; border-radius: 8px; font-size: 13.5px; cursor: pointer; color: var(--text-secondary); }
+  .gpt-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .search-input {
+    width: 100%; background: var(--bg-composer); border: 1px solid var(--border);
+    border-radius: 12px; padding: 11px 14px; color: var(--text-primary);
+    font-size: 14px; outline: none; font-family: inherit;
+  }
+  .search-input:focus { border-color: #5d8fd6; }
+  .sr-item { padding: 10px 12px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+  .sr-item:hover { background: var(--bg-hover); }
+  .sr-empty { font-size: 13px; color: var(--text-tertiary); padding: 12px 4px; }
+  .lib-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .lib-card { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform .15s; }
+  .lib-card:hover { transform: translateY(-2px); }
+  .lib-thumb { height: 84px; display: flex; align-items: center; justify-content: center; font-size: 30px; }
+  .lib-card .t { padding: 8px 10px; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .plan-cards { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+  .plan-card { flex: 1; min-width: 160px; border: 1px solid var(--border); border-radius: 14px; padding: 18px 16px; }
+  .plan-card.hot { border-color: var(--accent); }
+  .plan-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .plan-price { font-size: 20px; font-weight: 700; margin: 8px 0 4px; }
+  .plan-price small { font-size: 12px; color: var(--text-tertiary); font-weight: 400; }
+  .plan-feats { font-size: 12.5px; color: var(--text-secondary); line-height: 2; margin: 10px 0 14px; }
+  .plan-btn {
+    width: 100%; padding: 8px 0; border-radius: 18px; font-size: 13px; cursor: pointer;
+    border: 1px solid var(--border); background: transparent; color: var(--text-primary);
+  }
+  .plan-btn.hot { background: var(--btn-bg); color: var(--btn-text); border: none; font-weight: 600; }
+  @media (max-width: 768px) { .lib-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  /* 用户菜单（二级） */
+  .user-menu {
+    position: absolute; bottom: 54px; left: 10px; width: 240px;
+    background: var(--bg-hover); border: 1px solid var(--border);
+    border-radius: 14px; padding: 6px; box-shadow: 0 8px 30px #00000066;
+    display: none; z-index: 60;
+  }
+  .user-menu.open { display: block; }
+  .um-header { padding: 10px 10px 12px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+  .um-header .n { font-size: 14px; font-weight: 600; }
+  .um-header .e { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+  .um-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+  .um-item:hover { background: #ffffff12; }
+  .um-item svg { width: 17px; height: 17px; opacity: .85; }
+
+  /* ================= 主区域 ================= */
+  .main { flex: 1; display: flex; flex-direction: column; position: relative; min-width: 0; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; }
+  .topbar-left { display: flex; align-items: center; gap: 8px; }
+  .icon-btn {
+    width: 34px; height: 34px; border-radius: 8px; border: none;
+    background: transparent; color: var(--text-secondary); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .icon-btn:hover { background: var(--bg-hover); }
+  .model-select {
+    display: flex; align-items: center; gap: 6px;
+    border: none; background: transparent; color: var(--text-primary);
+    font-size: 16px; font-weight: 500; cursor: pointer; padding: 6px 10px; border-radius: 8px;
+  }
+  .model-select:hover { background: var(--bg-hover); }
+  .model-select .badge { font-size: 12px; color: var(--text-tertiary); font-weight: 400; }
+  .model-select .new-badge {
+    font-size: 11px; color: var(--accent); background: #19c37d22;
+    padding: 1px 6px; border-radius: 8px; font-weight: 600;
+  }
+  .topbar-right { display: flex; align-items: center; gap: 8px; }
+  .share-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border);
+    background: transparent; color: var(--text-primary); font-size: 13px; cursor: pointer;
+  }
+  .share-btn:hover { background: var(--bg-hover); }
+  .theme-btn { font-size: 16px; }
+
+  /* 模型下拉 */
+  .model-menu {
+    position: absolute; top: 52px; left: 60px; width: 280px;
+    background: var(--bg-hover); border: 1px solid var(--border);
+    border-radius: 14px; padding: 6px; box-shadow: 0 8px 30px #00000066;
+    display: none; z-index: 60;
+  }
+  .model-menu.open { display: block; }
+  .mm-item { padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+  .mm-item:hover { background: #ffffff12; }
+  .mm-item .d { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+  .mm-item .check { float: right; color: var(--accent); }
+
+  /* 空状态 */
+  .hero {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; padding-bottom: 10vh;
+  }
+  .hero h1 { font-size: 28px; font-weight: 400; margin-bottom: 28px; letter-spacing: .2px; }
+
+  /* ================= 会话视图 ================= */
+  .chat-view { display: none; flex-direction: column; flex: 1; min-height: 0; }
+  .chat-view.active { display: flex; }
+  .messages {
+    flex: 1; overflow-y: auto; width: min(768px, 94%);
+    margin: 0 auto; padding: 16px 0 24px;
+  }
+  .messages::-webkit-scrollbar { width: 6px; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); }
+  .msg { display: flex; margin-bottom: 24px; gap: 14px; }
+  .msg.user { justify-content: flex-end; flex-direction: column; align-items: flex-end; }
+  .msg.user .bubble {
+    background: var(--bg-bubble); border-radius: 18px;
+    padding: 10px 16px; max-width: 78%; font-size: 16px; line-height: 1.65;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .msg.ai .ai-avatar {
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+    background: var(--bg-main);
+  }
+  .msg.ai .ai-body { font-size: 16px; line-height: 1.7; min-width: 0; }
+  .msg.ai .ai-body p { margin-bottom: 12px; }
+  .msg.ai .ai-body p:last-child { margin-bottom: 0; }
+  .msg.ai .ai-body ul, .msg.ai .ai-body ol { margin: 0 0 12px 22px; }
+  .msg.ai .ai-body li { margin-bottom: 4px; }
+  .msg.ai .ai-body pre {
+    background: #0d0d0d; border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; margin: 4px 0 12px; overflow-x: auto;
+  }
+  .msg.ai .ai-body pre code { color: #ececec; font-family: Consolas, monospace; font-size: 13px; line-height: 1.6; }
+  html[data-theme="light"] .msg.ai .ai-body pre { background: #f6f6f6; }
+  html[data-theme="light"] .msg.ai .ai-body pre code { color: #0d0d0d; }
+  .typing { display: inline-flex; gap: 5px; padding: 6px 0; }
+  .typing span { width: 8px; height: 8px; border-radius: 50%; background: var(--text-tertiary); animation: blink 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: .2s; }
+  .typing span:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%,80%,100%{opacity:.25} 40%{opacity:1} }
+
+  /* 消息悬浮操作栏 */
+  .msg-actions {
+    display: flex; gap: 2px; margin-top: 6px; opacity: 0;
+    transition: opacity .15s;
+  }
+  .msg:hover .msg-actions { opacity: 1; }
+  .msg.user .msg-actions { justify-content: flex-end; }
+  .act-btn {
+    width: 28px; height: 28px; border-radius: 6px; border: none;
+    background: transparent; color: var(--text-tertiary); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 14px;
+  }
+  .act-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .act-btn.on { color: var(--accent); }
+
+  /* ================= 输入框 ================= */
+  .composer-area { padding: 0 16px 14px; flex-shrink: 0; }
+  .composer-wrap { width: min(768px, 100%); margin: 0 auto; }
+  .composer { background: var(--bg-composer); border-radius: 26px; padding: 12px 14px 10px; box-shadow: 0 2px 12px #0000001f; }
+  .composer input {
+    width: 100%; border: none; outline: none; background: transparent;
+    color: var(--text-primary); font-size: 16px; padding: 4px 4px 10px;
+  }
+  .composer input::placeholder { color: var(--text-tertiary); }
+  .composer-toolbar { display: flex; align-items: center; gap: 4px; }
+  .round-btn {
+    width: 34px; height: 34px; border-radius: 50%; border: none;
+    background: transparent; color: var(--text-secondary); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
+  }
+  .round-btn:hover { background: #ffffff14; }
+  html[data-theme="light"] .round-btn:hover { background: #0000000d; }
+  .round-btn.on { background: #19c37d33; color: var(--accent); }
+  .tool-pill {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 12px; border-radius: 18px; border: 1px solid var(--border);
+    background: transparent; color: var(--text-primary); font-size: 13px; cursor: pointer;
+  }
+  .tool-pill:hover { background: #ffffff10; }
+  .tool-pill.on { border-color: var(--accent); color: var(--accent); background: #19c37d14; }
+  .send-btn {
+    margin-left: auto; width: 34px; height: 34px; border-radius: 50%;
+    border: none; background: var(--btn-bg); color: var(--btn-text);
+    cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    transition: transform .15s;
+  }
+  .send-btn:active { transform: scale(.9); }
+  .disclaimer { text-align: center; font-size: 12px; color: var(--text-tertiary); padding-top: 10px; }
+
+  /* ================= 语音模式覆盖层 ================= */
+  .voice-overlay {
+    position: fixed; inset: 0; background: var(--overlay); backdrop-filter: blur(6px);
+    display: none; align-items: center; justify-content: center; z-index: 100;
+    flex-direction: column; gap: 32px; cursor: pointer;
+  }
+  .voice-overlay.open { display: flex; }
+  .voice-title { color: #fff; font-size: 16px; }
+  .voice-orb {
+    width: 110px; height: 110px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #7ee0b0, #19c37d 55%, #0f8f5c);
+    animation: pulse 1.4s ease-in-out infinite;
+    box-shadow: 0 0 60px #19c37d66;
+  }
+  @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+  .voice-hint { color: #ffffffaa; font-size: 13px; }
+
+  /* ================= 弹窗体系 ================= */
+  .modal-mask {
+    position: fixed; inset: 0; background: var(--overlay);
+    display: none; align-items: center; justify-content: center; z-index: 90;
+  }
+  .modal-mask.open { display: flex; }
+  .settings-modal {
+    width: min(680px, 94vw); height: min(500px, 82vh);
+    background: var(--bg-main); border: 1px solid var(--border);
+    border-radius: 16px; display: flex; overflow: hidden;
+    box-shadow: 0 20px 60px #00000088; position: relative;
+  }
+  .sm-side { width: 176px; background: var(--bg-sidebar); padding: 14px 10px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; flex-shrink: 0; }
+  .sm-side .t { font-size: 15px; font-weight: 600; padding: 4px 10px 14px; }
+  .sm-tab { padding: 9px 12px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+  .sm-tab.active, .sm-tab:hover { background: var(--bg-hover); }
+  .sm-main { flex: 1; padding: 22px 26px; overflow-y: auto; }
+  .sm-panel { display: none; }
+  .sm-panel.active { display: block; }
+  .sm-main h3 { font-size: 16px; margin-bottom: 18px; }
+  .set-row { display: flex; align-items: center; justify-content: space-between; padding: 13px 0; border-bottom: 1px solid var(--border); font-size: 14px; gap: 12px; }
+  .set-row .s { display: block; font-size: 12px; color: var(--text-tertiary); margin-top: 3px; }
+  .set-row .link { color: #5d8fd6; cursor: pointer; font-size: 13px; }
+  .set-row .danger { color: var(--danger); cursor: pointer; font-size: 13px; }
+  .set-row.clickable { cursor: pointer; }
+  .switch { width: 40px; height: 22px; border-radius: 11px; background: #ffffff2e; position: relative; cursor: pointer; flex-shrink: 0; transition: background .2s; }
+  .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left .2s; }
+  .switch.on { background: var(--accent); }
+  .switch.on::after { left: 20px; }
+  html[data-theme="light"] .switch { background: #0000002a; }
+  .close-x { position: absolute; top: 12px; right: 14px; color: var(--text-secondary); cursor: pointer; font-size: 17px; z-index: 5; border: none; background: transparent; }
+
+  /* 分段选择器（主题） */
+  .seg { display: flex; background: var(--bg-composer); border-radius: 10px; padding: 3px; gap: 2px; }
+  .seg-item { padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; color: var(--text-secondary); border: none; background: transparent; }
+  .seg-item.on { background: var(--bg-hover); color: var(--text-primary); }
+
+  /* 强调色圆点 */
+  .dots { display: flex; gap: 8px; }
+  .dot { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+  .dot.sel { border-color: var(--text-primary); }
+
+  /* 子弹窗（三级页面） */
+  .sub-modal {
+    width: min(560px, 92vw); max-height: 78vh; overflow-y: auto;
+    background: var(--bg-main); border: 1px solid var(--border);
+    border-radius: 16px; padding: 24px; position: relative;
+    box-shadow: 0 20px 60px #00000088;
+  }
+  .sub-modal h3 { font-size: 17px; margin-bottom: 6px; }
+  .sub-modal .sub-desc { font-size: 13px; color: var(--text-tertiary); margin-bottom: 18px; }
+  .sub-modal label { font-size: 13px; color: var(--text-secondary); display: block; margin: 14px 0 6px; }
+  .sub-modal textarea {
+    width: 100%; min-height: 90px; background: var(--bg-composer);
+    border: 1px solid var(--border); border-radius: 10px; color: var(--text-primary);
+    padding: 10px 12px; font-size: 13.5px; font-family: inherit; resize: vertical; outline: none;
+  }
+  .sub-modal .counter { font-size: 11px; color: var(--text-tertiary); text-align: right; margin-top: 3px; }
+  .primary-btn {
+    margin-top: 18px; padding: 9px 20px; border-radius: 20px; border: none;
+    background: var(--btn-bg); color: var(--btn-text); font-size: 14px; cursor: pointer; font-weight: 600;
+  }
+  .ghost-btn {
+    margin-top: 18px; padding: 9px 20px; border-radius: 20px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text-primary); font-size: 14px; cursor: pointer; margin-left: 8px;
+  }
+  .memory-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 11px 14px; border: 1px solid var(--border); border-radius: 10px;
+    font-size: 14px; margin-bottom: 8px;
+  }
+  .memory-item .del { color: var(--text-tertiary); cursor: pointer; font-size: 15px; padding: 2px 6px; border-radius: 6px; }
+  .memory-item .del:hover { color: var(--danger); background: #ef444414; }
+  .chip-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { padding: 6px 14px; border-radius: 16px; border: 1px solid var(--border); background: transparent; color: var(--text-primary); font-size: 13px; cursor: pointer; }
+  .chip.on { border-color: var(--accent); color: var(--accent); background: #19c37d14; }
+  .conn-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%) translateY(8px);
+    background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-primary);
+    font-size: 13px; padding: 9px 18px; border-radius: 20px;
+    opacity: 0; pointer-events: none; transition: all .25s; z-index: 200;
+    box-shadow: 0 6px 20px #00000066;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ================= 手机适配 ================= */
+  .drawer-mask { position: fixed; inset: 0; background: var(--overlay); display: none; z-index: 35; }
+  @media (max-width: 768px) {
+    .sidebar { position: fixed; top: 0; left: 0; bottom: 0; transform: translateX(-100%); }
+    body.sidebar-open .sidebar { transform: translateX(0); box-shadow: 8px 0 30px #00000066; }
+    body.sidebar-open .drawer-mask { display: block; }
+    .hero { padding-bottom: 4vh; }
+    .hero h1 { font-size: 22px; margin-bottom: 22px; }
+    .model-select { font-size: 15px; }
+    .topbar { padding: 8px 10px; }
+    .composer-area { padding: 0 8px 10px; }
+    .hero .composer-wrap { width: calc(100% - 16px); }
+    .share-btn span { display: none; }
+    .share-btn { padding: 6px 9px; }
+    .msg.user .bubble { max-width: 86%; }
+    .sm-side { width: 118px; }
+    .msg-actions { opacity: 1; }
+    .msg.user .msg-actions { justify-content: flex-end; }
+    /* 设置弹窗手机端：Tab 横排置顶，内容整页化 */
+    .settings-modal { flex-direction: column; height: min(600px, 86vh); }
+    .sm-side {
+      width: 100%; flex-direction: row; overflow-x: auto;
+      padding: 10px 12px; gap: 4px; align-items: center; flex-shrink: 0;
+      border-bottom: 1px solid var(--border);
+      scrollbar-width: none;
+    }
+    .sm-side::-webkit-scrollbar { display: none; }
+    .sm-side .t { display: none; }
+    .sm-tab { white-space: nowrap; padding: 7px 11px; font-size: 13px; }
+    .sm-main { padding: 16px 16px 20px; }
+    .set-row { flex-wrap: wrap; row-gap: 8px; }
+    .settings-modal .close-x { top: 10px; right: 10px; }
+    .plan-cards { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="drawer-mask" id="drawerMask"></div>
+
+  <!-- ============ 侧边栏 ============ -->
+  <aside class="sidebar" id="sidebar">
+
+    <!-- Logo 工作区菜单 -->
+    <div class="user-menu logo-menu" id="logoMenu">
+      <div class="um-item" id="lmGpt"><span style="color:var(--accent)">✓</span> ChatGPT 5.2</div>
+      <div class="um-item" id="lmTemp">🎭 临时聊天</div>
+    </div>
+
+    <div class="sidebar-top">
+      <div class="nav-item" id="logoBtn">
+        <svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 3.2 4.8 2.8v5.9L12 16.8l-4.8-2.9V8L12 5.2Z"/></svg>
+        <svg class="chevron" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6l4 4 4-4"/></svg>
+      </div>
+      <div class="nav-item" id="newChatBtn">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        新的聊天
+      </div>
+      <div class="search-box" id="searchBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        搜索聊天记录
+      </div>
+      <div class="nav-item" id="libNav">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/></svg>
+        资料库
+      </div>
+      <div class="nav-item" id="gptNav">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h6"/></svg>
+        GPT
+        <svg class="chevron" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6l4 4 4-4"/></svg>
+      </div>
+      <div class="gpt-sub" id="gptSub">
+        <div class="gpt-item" data-gpt="数据分析 GPT">📊 数据分析 GPT</div>
+        <div class="gpt-item" data-gpt="写作助手 GPT">✍️ 写作助手 GPT</div>
+        <div class="gpt-item" data-gpt="课件排版 GPT">🎨 课件排版 GPT</div>
+      </div>
+      <div class="nav-item" id="soraNav">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5z"/></svg>
+        Sora
+      </div>
+    </div>
+
+    <div class="sidebar-section">聊天记录</div>
+    <div class="chat-list" id="chatList"></div>
+
+    <div class="sidebar-bottom">
+      <div class="upgrade" id="upgradeBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 8l4-4 10 1 4 4-9 12L3 8z"/><path d="M7 4l2 4-3 8"/></svg>
+        <div>
+          <div style="font-size:14px">升级方案</div>
+          <div class="plan">更多模型访问权限</div>
+        </div>
+      </div>
+      <div class="user-row" id="userRow">
+        <div class="avatar">张</div>
+        <div class="user-name">Zhang Chong</div>
+      </div>
+
+      <div class="user-menu" id="userMenu">
+        <div class="um-header">
+          <div class="n">Zhang Chong</div>
+          <div class="e">zhangchong@jiuyuke.cn</div>
+        </div>
+        <div class="um-item" id="menuUpgrade">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M3 8l4-4 10 1 4 4-9 12L3 8z"/></svg>
+          升级方案
+        </div>
+        <div class="um-item" id="openSettings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.4a7 7 0 0 0-2 1.2l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.9a7 7 0 0 0 2 1.2l.4 2.6h4l.4-2.4a7 7 0 0 0 2-1.2l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/></svg>
+          设置
+        </div>
+        <div class="um-item" id="menuLogout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 8l-4 4 4 4M6 12h9"/></svg>
+          退出登录
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ 主区域 ============ -->
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="icon-btn" id="sidebarToggle" title="侧栏开关">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9.5 4v16"/></svg>
+        </button>
+        <button class="model-select" id="modelBtn">
+          ChatGPT
+          <span class="badge" id="modelBadge">5.2</span>
+          <span class="new-badge">新</span>
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6l4 4 4-4"/></svg>
+        </button>
+      </div>
+      <div class="topbar-right">
+        <button class="share-btn" id="shareBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+          <span>分享</span>
+        </button>
+        <button class="icon-btn theme-btn" id="themeToggle" title="切换主题">☀️</button>
+        <button class="icon-btn" id="topAvatar" title="账号">
+          <div class="avatar" style="width:26px;height:26px;font-size:12px">张</div>
+        </button>
+      </div>
+    </div>
+
+    <div class="model-menu" id="modelMenu"></div>
+
+    <!-- 分享菜单 -->
+    <div class="user-menu share-menu" id="shareMenu">
+      <div class="um-item" id="smCopy">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></svg>
+        复制链接
+      </div>
+      <div class="um-item" id="smPublic">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z"/></svg>
+        创建公开链接
+      </div>
+    </div>
+
+    <div class="hero" id="hero">
+      <h1>有什么可以帮忙的？</h1>
+      <div class="composer-wrap">
+        <div class="composer">
+          <input type="text" id="heroInput" placeholder="询问任何问题">
+          <div class="composer-toolbar">
+            <button class="round-btn" title="添加文件" data-attach>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <button class="tool-pill" id="toolPill">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M14 4l6 6-8 8H6v-6l8-8z"/></svg>
+              工具
+            </button>
+            <button class="round-btn" id="micBtn" title="语音对话">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+            </button>
+            <button class="send-btn" id="heroSend" title="发送">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="disclaimer">由 AI 生成，仅供参考 · 界面为静态复刻演示</div>
+      </div>
+    </div>
+
+    <div class="chat-view" id="chatView">
+      <div class="messages" id="messages"></div>
+      <div class="composer-area">
+        <div class="composer-wrap">
+          <div class="composer">
+            <input type="text" id="chatInput" placeholder="询问任何问题">
+            <div class="composer-toolbar">
+              <button class="round-btn" title="添加文件" data-attach>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+              <button class="tool-pill" id="toolPill2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M14 4l6 6-8 8H6v-6l8-8z"/></svg>
+                工具
+              </button>
+              <button class="round-btn" id="micBtn2" title="语音对话">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+              </button>
+              <button class="send-btn" id="chatSend" title="发送">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="disclaimer">由 AI 生成，仅供参考</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 语音模式 -->
+  <div class="voice-overlay" id="voiceOverlay">
+    <div class="voice-title">正在聆听…</div>
+    <div class="voice-orb"></div>
+    <div class="voice-hint">点击任意位置结束语音对话</div>
+  </div>
+
+  <!-- ============ 设置弹窗（二级页面） ============ -->
+  <div class="modal-mask" id="settingsModal">
+    <div class="settings-modal">
+      <button class="close-x" id="closeSettings">✕</button>
+      <div class="sm-side" id="smTabs">
+        <div class="t">设置</div>
+        <div class="sm-tab active" data-tab="general">通用</div>
+        <div class="sm-tab" data-tab="notify">通知</div>
+        <div class="sm-tab" data-tab="personal">个性化</div>
+        <div class="sm-tab" data-tab="speech">语音</div>
+        <div class="sm-tab" data-tab="data">数据控制</div>
+        <div class="sm-tab" data-tab="apps">已连接的应用</div>
+        <div class="sm-tab" data-tab="security">安全</div>
+        <div class="sm-tab" data-tab="account">账号</div>
+      </div>
+      <div class="sm-main">
+
+        <div class="sm-panel active" data-panel="general">
+          <h3>通用</h3>
+          <div class="set-row">
+            <div>主题<span class="s">浅色、深色或跟随系统</span></div>
+            <div class="seg" id="themeSeg">
+              <button class="seg-item" data-theme-val="light">浅色</button>
+              <button class="seg-item" data-theme-val="dark">深色</button>
+              <button class="seg-item on" data-theme-val="system">跟随系统</button>
+            </div>
+          </div>
+          <div class="set-row">
+            <div>强调色<span class="s">按钮、链接和选中态的颜色</span></div>
+            <div class="dots" id="accentDots">
+              <div class="dot sel" data-color="#19c37d" style="background:#19c37d"></div>
+              <div class="dot" data-color="#5d8fd6" style="background:#5d8fd6"></div>
+              <div class="dot" data-color="#f2a33c" style="background:#f2a33c"></div>
+              <div class="dot" data-color="#e06a8a" style="background:#e06a8a"></div>
+              <div class="dot" data-color="#8f7ce8" style="background:#8f7ce8"></div>
+              <div class="dot" data-color="#42aeb8" style="background:#42aeb8"></div>
+            </div>
+          </div>
+          <div class="set-row">
+            <div>语言<span class="s">界面显示语言</span></div>
+            <div style="font-size:13px;color:var(--text-secondary)">自动检测</div>
+          </div>
+          <div class="set-row">
+            <div>显示尖括号原始文本<span class="s">聊天中显示 HTML / Markdown 原文</span></div>
+            <div class="switch" data-switch></div>
+          </div>
+          <div class="set-row">
+            <div>归档所有聊天记录<span class="s">归档后将从侧栏隐藏</span></div>
+            <div class="link" data-toast="演示：全部聊天已归档">全部归档</div>
+          </div>
+          <div class="set-row">
+            <div>临时聊天<span class="s">新对话不保存到历史记录</span></div>
+            <div class="switch" data-switch></div>
+          </div>
+        </div>
+
+        <div class="sm-panel" data-panel="notify">
+          <h3>通知</h3>
+          <div class="set-row">
+            <div>回复完成通知<span class="s">回复生成完成后弹出通知</span></div>
+            <div class="switch on" data-switch></div>
+          </div>
+          <div class="set-row">
+            <div>任务提醒<span class="s">定时任务与提醒完成时通知</span></div>
+            <div class="switch on" data-switch></div>
+          </div>
+          <div class="set-row">
+            <div>邮件摘要<span class="s">每周收到一封使用摘要邮件</span></div>
+            <div class="switch" data-switch></div>
+          </div>
+        </div>
+
+        <div class="sm-panel" data-panel="personal">
+          <h3>个性化</h3>
+          <div class="set-row clickable" id="rowCustomInstructions">
+            <div>自定义指令<span class="s">让 ChatGPT 更了解你、按你的偏好回答</span></div>
+            <div class="link">管理</div>
+          </div>
+          <div class="set-row">
+            <div>记忆<span class="s">记住跨会话的偏好与信息</span></div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="link" id="manageMemoryBtn">管理</div>
+              <div class="switch on" data-switch></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sm-panel" data-panel="speech">
+          <h3>语音</h3>
+          <div class="set-row">
+            <div>主语音<span class="s">语音对话使用的音色</span></div>
+            <div class="chip-group" id="voiceChips">
+              <button class="chip on">Sol</button><button class="chip">Spruce</button><button class="chip">Cove</button><button class="chip">Ember</button>
+            </div>
+          </div>
+          <div class="set-row">
+            <div>语音模式<span class="s">Live 支持自然对话与图片，Advanced 支持视频与屏幕共享</span></div>
+            <div class="chip-group" id="modeChips">
+              <button class="chip on">Live</button><button class="chip">Advanced</button><button class="chip">Standard</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="sm-panel" data-panel="data">
+          <h3>数据控制</h3>
+          <div class="set-row">
+            <div>改进所有人的模型<span class="s">允许内容用于模型训练</span></div>
+            <div class="switch" data-switch></div>
+          </div>
+          <div class="set-row">
+            <div>共享分析数据<span class="s">匿名使用数据帮助改进产品</span></div>
+            <div class="switch on" data-switch></div>
+          </div>
+          <div class="set-row">
+            <div>导出数据<span class="s">将收到一份可下载的存档文件</span></div>
+            <div class="link" id="exportBtn">导出</div>
+          </div>
+          <div class="set-row">
+            <div>删除账号<span class="s">永久删除账号及全部数据，不可恢复</span></div>
+            <div class="danger" data-toast="演示页面：删除账号仅为占位">删除…</div>
+          </div>
+        </div>
+
+        <div class="sm-panel" data-panel="apps">
+          <h3>已连接的应用</h3>
+          <div class="set-row">
+            <div><span class="conn-dot" style="background:#19c37d"></span>Google 云端硬盘<span class="s">在聊天中引用云端文件</span></div>
+            <div class="link" data-toast="演示：已断开 Google 云端硬盘">断开</div>
+          </div>
+          <div class="set-row">
+            <div><span class="conn-dot" style="background:var(--text-tertiary)"></span>Microsoft OneDrive<span class="s">未连接</span></div>
+            <div class="link" data-toast="演示：连接 OneDrive 仅为占位">连接</div>
+          </div>
+          <div class="set-row">
+            <div><span class="conn-dot" style="background:var(--text-tertiary)"></span>Notion<span class="s">未连接</span></div>
+            <div class="link" data-toast="演示：连接 Notion 仅为占位">连接</div>
+          </div>
+        </div>
+
+        <div class="sm-panel" data-panel="security">
+          <h3>安全</h3>
+          <div class="set-row">
+            <div>登录方式<span class="s">zhangchong@jiuyuke.cn</span></div>
+            <div style="font-size:13px;color:var(--text-secondary)">邮箱</div>
+          </div>
+          <div class="set-row">
+            <div>多重验证<span class="s">为账号增加一层额外保护</span></div>
+            <div class="link" data-toast="演示：开启 MFA 仅为占位">开启</div>
+          </div>
+          <div class="set-row">
+            <div>登录设备<span class="s">MacBook · Chrome · 1 台 iPhone</span></div>
+            <div class="link" data-toast="演示：设备管理仅为占位">管理</div>
+          </div>
+        </div>
+
+        <div class="sm-panel" data-panel="account">
+          <h3>账号</h3>
+          <div class="set-row">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="avatar" style="width:38px;height:38px;font-size:16px">张</div>
+              <div><div style="font-size:14px;font-weight:600">Zhang Chong</div><div class="s" style="font-size:12px;color:var(--text-tertiary)">zhangchong@jiuyuke.cn</div></div>
+            </div>
+            <div style="font-size:13px;color:var(--text-secondary)">Plus</div>
+          </div>
+          <div class="set-row">
+            <div>我的方案<span class="s">升级以获得更多模型与更高限额</span></div>
+            <div class="link" data-toast="演示：方案页仅为占位">管理</div>
+          </div>
+          <div class="set-row" style="border-bottom:none">
+            <div></div>
+            <div class="danger" id="accountLogout">退出登录</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 三级页面：自定义指令 ============ -->
+  <div class="modal-mask" id="ciModal">
+    <div class="sub-modal">
+      <h3>自定义指令</h3>
+      <div class="sub-desc">告诉 ChatGPT 你的背景与回答偏好，所有新聊天都会生效。</div>
+      <div class="set-row" style="padding:10px 0">
+        <div>为所有新聊天启用</div>
+        <div class="switch on" data-switch></div>
+      </div>
+      <label>你希望 ChatGPT 了解你的哪些信息？</label>
+      <textarea id="ciText1">我是职业中专的《信息技术基础》课程教师，也担任班主任。教学素材为 HTML 互动课件与题库 Markdown，喜欢先结论再展开、表格化对比、P0-P3 优先级分层。</textarea>
+      <div class="counter">102 / 1500</div>
+      <label>你希望 ChatGPT 如何回复？</label>
+      <textarea id="ciText2">先给结论，再给依据；多用表格和清单；不确定时主动反问；建议加【AI 建议（可选采纳）】标签。</textarea>
+      <div class="counter">58 / 1500</div>
+      <div>
+        <button class="primary-btn" id="ciDone">完成</button>
+        <button class="ghost-btn" id="ciCancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 三级页面：管理记忆 ============ -->
+  <div class="modal-mask" id="memModal">
+    <div class="sub-modal">
+      <h3>管理记忆</h3>
+      <div class="sub-desc">以下是 ChatGPT 记住的关于你的内容，可以逐条删除或全部清空。</div>
+      <div id="memoryList">
+        <div class="memory-item"><span>称呼用户为「张老师」，口语化中文交流</span><span class="del">✕</span></div>
+        <div class="memory-item"><span>课件规范：紫色主题 + 每章主色 + 27–31px 投影字号 + 页码右上</span><span class="del">✕</span></div>
+        <div class="memory-item"><span>题目来源优先级：福州抽测 MD → 习题册 XC → 模拟卷 PDF → 自编</span><span class="del">✕</span></div>
+        <div class="memory-item"><span>汇报偏好：表格 + ✅/⚠️/❌ + 📦/🔧/🚀 分段标记</span><span class="del">✕</span></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="danger" id="clearAllMem" style="color:var(--danger);cursor:pointer;font-size:14px">清空全部记忆</div>
+        <button class="primary-btn" id="memDone" style="margin-top:14px">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 搜索聊天记录 ============ -->
+  <div class="modal-mask" id="searchModal">
+    <div class="sub-modal" style="width:min(520px,94vw)">
+      <h3>搜索聊天记录</h3>
+      <input class="search-input" id="searchInput" placeholder="搜索聊天…">
+      <div id="searchResults" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- ============ 资料库 ============ -->
+  <div class="modal-mask" id="libModal">
+    <div class="sub-modal" style="width:min(640px,94vw)">
+      <h3>资料库</h3>
+      <div class="sub-desc">你在 ChatGPT 中生成和上传过的图片与文件（演示内容）</div>
+      <div class="lib-grid">
+        <div class="lib-card"><div class="lib-thumb" style="background:linear-gradient(135deg,#7c5cff55,#19c37d55)">🌈</div><div class="t">渐变海报设计.png</div></div>
+        <div class="lib-card"><div class="lib-thumb" style="background:linear-gradient(135deg,#f2a33c55,#e06a8a55)">📊</div><div class="t">实习进度月度报表.xlsx</div></div>
+        <div class="lib-card"><div class="lib-thumb" style="background:linear-gradient(135deg,#5d8fd655,#42aeb855)">📄</div><div class="t">第3章课件排版稿.md</div></div>
+        <div class="lib-card"><div class="lib-thumb" style="background:linear-gradient(135deg,#8f7ce855,#5d8fd655)">🎬</div><div class="t">产品演示视频.mp4</div></div>
+        <div class="lib-card"><div class="lib-thumb" style="background:linear-gradient(135deg,#19c37d55,#f2a33c55)">🧩</div><div class="t">题库分类脚本.py</div></div>
+        <div class="lib-card"><div class="lib-thumb" style="background:linear-gradient(135deg,#e06a8a55,#8f7ce855)">🎨</div><div class="t">头像插画系列.zip</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Sora ============ -->
+  <div class="modal-mask" id="soraModal">
+    <div class="sub-modal" style="width:min(640px,94vw)">
+      <h3>Sora</h3>
+      <div class="sub-desc">文字生成视频（演示内容，点击卡片无实际播放）</div>
+      <div class="lib-grid">
+        <div class="lib-card"><div class="lib-thumb" style="background:linear-gradient(135deg,#0ea5e9,#8b5cf6);color:#fff;font-size:26px">▶</div><div class="t">城市延时摄影 · 10s</div></div>
+        <div class="lib-card"><div class="lib-thumb" style="background:linear-gradient(135deg,#f97316,#ef4444);color:#fff;font-size:26px">▶</div><div class="t">海浪特写慢镜头 · 8s</div></div>
+        <div class="lib-card"><div class="lib-thumb" style="background:linear-gradient(135deg,#22c55e,#0ea5e9);color:#fff;font-size:26px">▶</div><div class="t">森林清晨航拍 · 12s</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 升级方案 ============ -->
+  <div class="modal-mask" id="upModal">
+    <div class="sub-modal" style="width:min(720px,96vw)">
+      <h3>升级你的方案</h3>
+      <div class="sub-desc">获得更多模型访问权限与更高使用限额</div>
+      <div class="plan-cards">
+        <div class="plan-card">
+          <div class="plan-name">Free</div>
+          <div class="plan-price">¥0<small> /月</small></div>
+          <div class="plan-feats">· ChatGPT 5.2 基础额度<br>· 有限的语言模型访问<br>· 基础文件上传</div>
+          <div style="font-size:12px;color:var(--text-tertiary);text-align:center">当前方案</div>
+        </div>
+        <div class="plan-card hot">
+          <div class="plan-name">Plus <span style="font-size:11px;color:var(--accent);background:#19c37d22;padding:1px 6px;border-radius:8px">推荐</span></div>
+          <div class="plan-price">¥140<small> /月</small></div>
+          <div class="plan-feats">· 更高的消息额度<br>· Thinking / Pro 模型<br>· Sora 视频生成<br>· 高级语音模式</div>
+          <button class="plan-btn hot" data-upgrade>升级到 Plus</button>
+        </div>
+        <div class="plan-card">
+          <div class="plan-name">Pro</div>
+          <div class="plan-price">¥1,499<small> /月</small></div>
+          <div class="plan-feats">· 无限量模型访问<br>· 5.2 Pro 研究级智能<br>· 最高额度 Sora<br>· 优先访问新功能</div>
+          <button class="plan-btn" data-upgrade>升级到 Pro</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="fileInput" multiple style="display:none">
+  <div class="toast" id="toast"></div>
+
+<script>
+  /* ================= 数据 ================= */
+  const LOGO_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="color:var(--text-primary)"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 3.2 4.8 2.8v5.9L12 16.8l-4.8-2.9V8L12 5.2Z"/></svg>';
+
+  const CHATS = {
+    'static': {
+      title: '静态页面复刻计划',
+      msgs: [
+        { role: 'user', text: '帮我用 HTML 复刻一个 ChatGPT 的聊天界面，要单文件、无依赖。' },
+        { role: 'ai', html: '<p>没问题。核心结构分三块：</p><ul><li><b>左侧会话栏</b>：260px 深色，含导航 + 历史会话列表</li><li><b>主区域</b>：顶栏 + 居中空状态 + 输入框胶囊</li><li><b>配色</b>：CSS 变量驱动，方便做明暗主题切换</li></ul><p>输入框胶囊的圆角建议 26px，和官方一致。</p>' },
+        { role: 'user', text: '输入框圆角是多少来着？给我写个 CSS。' },
+        { role: 'ai', html: '<p>官方是 26px，代码如下：</p><pre><code>.composer {\n  background: #303030;\n  border-radius: 26px;\n  padding: 12px 14px 10px;\n  box-shadow: 0 2px 12px #0000001f;\n}</code></pre><p>手机端可以适当收窄到 24px，视觉上更协调。</p>' },
+      ]
+    },
+    'flutter': {
+      title: 'Flutter 与 Web 功能对齐',
+      msgs: [
+        { role: 'user', text: '网页版和 Flutter App 现在功能差在哪？' },
+        { role: 'ai', html: '<p>我梳理了一下，主要差距有 4 项：</p><ul><li>记忆系统：App 有，网页版缺</li><li>MCP 服务器管理：App 完整，网页版只读</li><li>设备工具：两端都有，网页版少重启指令</li><li>关心收件箱：仅 App 支持</li></ul><p>建议先补记忆系统，其他三项收益较低。</p>' },
+      ]
+    },
+    'courseware': {
+      title: '信息技术课件 · 第3章排版',
+      msgs: [
+        { role: 'user', text: '第3章课件的投影字号和页码规则确认一下。' },
+        { role: 'ai', html: '<p>确认如下：</p><ul><li>投影字号：27–31px，正文不低于 27px</li><li>页码：X/Y 形式，固定右上角</li><li>主色：紫色主题，第 3 章可给独立章节色</li><li>翻页动画：8 种随机轮换</li></ul>' },
+      ]
+    },
+    'question': {
+      title: '题库知识点抽取脚本',
+      msgs: [
+        { role: 'user', text: '1227 道题按知识点分类的脚本思路？' },
+        { role: 'ai', html: '<p>推荐三步流水线：</p><ol><li>正则切分题干 / 选项 / 答案 / 解析四段</li><li>按「6 基础 + 3 拓展」考点映射表打标签</li><li>输出 Markdown，真题在标题后附来源标注</li></ol><p>优先级：福州抽测 MD → 习题册 XC → 模拟卷 PDF。</p>' },
+      ]
+    },
+    'worker': {
+      title: 'Cloudflare Workers 部署问题',
+      msgs: [
+        { role: 'user', text: 'Worker 的 /clear 接口对未绑定手机返回错误文本，什么原因？' },
+        { role: 'ai', html: '<p>根因是 common binding-check 没加守卫：请求在未绑定设备时直接穿透到了业务逻辑。修法是在 /clear 入口先校验设备绑定状态，未绑定直接返回结构化错误。这个教训记得沉淀进文档。</p>' },
+      ]
+    },
+    'game': {
+      title: 'HTML5 小游戏碰撞检测',
+      msgs: [
+        { role: 'user', text: '平台跳跃游戏的落地判定偶尔穿地板，怎么修？' },
+        { role: 'ai', html: '<p>典型的隧穿问题。把移动拆成小步积分：每帧按速度拆分为多个 ≤ 半格高的子步，每子步做一次 AABB 碰撞。或者直接限制单帧最大下落速度 ≤ 瓦片高度。</p>' },
+      ]
+    },
+    'audit': {
+      title: '班主任月度导出优化',
+      msgs: [
+        { role: 'user', text: '月度导出要支持多年级，怎么设计数据结构？' },
+        { role: 'ai', html: '<p>用 cohort 模型：每届名册作为独立 cohort，学生记录挂 cohort ID 而不是年级字符串。导出时按「当前 cohort + 月份」聚合，切换届别只是切换查询上下文，历史数据不动。</p>' },
+      ]
+    },
+    'llm': {
+      title: '本地大模型量化方案对比',
+      msgs: [
+        { role: 'user', text: 'i3-10100 + 8GB 内存能跑 35B MoE 吗？' },
+        { role: 'ai', html: '<p>很难。35B-A3B 即使量化到 Q4 也要 20GB 左右内存，8GB 物理内存下基本不可行。建议方向：换更小参数量的激活模型，或接受纯 CPU 极慢推理（内存溢出到虚拟内存后 token 速度会掉到 1 以下）。</p>' },
+      ]
+    },
+  };
+
+  const MODELS = [
+    { id: '5.2', name: 'ChatGPT 5.2', desc: '最适合日常任务的智能模型' },
+    { id: '5.2-thinking', name: 'ChatGPT 5.2 Thinking', desc: '逐步推理，适合复杂问题' },
+    { id: '5.2-pro', name: 'ChatGPT 5.2 Pro', desc: '研究级智能，响应更慢' },
+    { id: '4.1', name: 'ChatGPT 4.1', desc: '旧版快速模型' },
+  ];
+  let currentModel = '5.2';
+  let currentChat = 'static';
+
+  /* ================= 工具 ================= */
+  const $ = id => document.getElementById(id);
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => toast('已复制到剪贴板')).catch(() => toast('复制失败'));
+    } else { toast('已复制到剪贴板'); }
+  }
+
+  /* ================= 侧栏会话列表 ================= */
+  function renderChatList() {
+    const list = $('chatList');
+    list.innerHTML = '';
+    for (const [key, chat] of Object.entries(CHATS)) {
+      const div = document.createElement('div');
+      div.className = 'chat-item' + (key === currentChat ? ' active' : '');
+      div.textContent = chat.title;
+      div.onclick = () => openChat(key);
+      list.appendChild(div);
+    }
+  }
+
+  function openChat(key) {
+    currentChat = key;
+    renderChatList();
+    renderMessages();
+    $('hero').style.display = 'none';
+    $('chatView').classList.add('active');
+    if (window.innerWidth <= 768) closeSidebar();
+  }
+
+  function newChat() {
+    currentChat = null;
+    renderChatList();
+    $('messages').innerHTML = '';
+    $('hero').style.display = 'flex';
+    $('chatView').classList.remove('active');
+    $('heroInput').value = '';
+    if (window.innerWidth <= 768) closeSidebar();
+  }
+
+  /* ================= 消息渲染 ================= */
+  const ACT_AI = '<div class="msg-actions">' +
+    '<button class="act-btn" data-act="copy" title="复制">⧉</button>' +
+    '<button class="act-btn" data-act="like" title="好评">👍</button>' +
+    '<button class="act-btn" data-act="dislike" title="差评">👎</button>' +
+    '<button class="act-btn" data-act="speak" title="朗读">🔊</button>' +
+    '<button class="act-btn" data-act="regen" title="重新生成">↻</button></div>';
+  const ACT_USER = '<div class="msg-actions">' +
+    '<button class="act-btn" data-act="edit" title="编辑">✏️</button>' +
+    '<button class="act-btn" data-act="copy" title="复制">⧉</button></div>';
+
+  function renderMessages() {
+    const box = $('messages');
+    box.innerHTML = '';
+    if (!currentChat || !CHATS[currentChat]) return;
+    for (const m of CHATS[currentChat].msgs) appendMsg(m, box);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function appendMsg(m, box) {
+    box = box || $('messages');
+    const div = document.createElement('div');
+    div.className = 'msg ' + (m.role === 'user' ? 'user' : 'ai');
+    if (m.role === 'user') {
+      const b = document.createElement('div');
+      b.className = 'bubble';
+      b.textContent = m.text;
+      div.appendChild(b);
+      const acts = document.createElement('div');
+      acts.innerHTML = ACT_USER;
+      div.appendChild(acts);
+    } else {
+      const av = document.createElement('div');
+      av.className = 'ai-avatar';
+      av.innerHTML = LOGO_SVG;
+      const wrap = document.createElement('div');
+      wrap.style.minWidth = '0';
+      const body = document.createElement('div');
+      body.className = 'ai-body';
+      body.innerHTML = m.html || ('<p>' + esc(m.text || '').replace(/\n/g, '<br>') + '</p>');
+      wrap.appendChild(body);
+      const acts = document.createElement('div');
+      acts.innerHTML = ACT_AI;
+      wrap.appendChild(acts);
+      div.appendChild(av); div.appendChild(wrap);
+    }
+    box.appendChild(div);
+    return div;
+  }
+
+  /* 消息操作（事件委托） */
+  $('messages').addEventListener('click', e => {
+    const btn = e.target.closest('.act-btn');
+    if (!btn) return;
+    const msgEl = btn.closest('.msg');
+    const act = btn.dataset.act;
+    if (act === 'copy') {
+      const bubble = msgEl.querySelector('.bubble');
+      const body = msgEl.querySelector('.ai-body');
+      const tmp = document.createElement('div');
+      tmp.innerHTML = body ? body.innerHTML : (bubble ? bubble.textContent : '');
+      copyText(tmp.textContent.trim());
+    } else if (act === 'like' || act === 'dislike') {
+      const other = act === 'like' ? 'dislike' : 'like';
+      msgEl.querySelectorAll('[data-act="' + other + '"]').forEach(b => b.classList.remove('on'));
+      btn.classList.toggle('on');
+      toast(act === 'like' ? '感谢反馈' : '已记录反馈');
+    } else if (act === 'speak') {
+      toast('朗读演示：实际产品中将调用语音合成');
+    } else if (act === 'regen') {
+      toast('重新生成演示');
+    } else if (act === 'edit') {
+      const bubble = msgEl.querySelector('.bubble');
+      const input = $('chatView').classList.contains('active') ? $('chatInput') : $('heroInput');
+      input.value = bubble.textContent;
+      input.focus();
+      toast('已放入输入框，可编辑后重新发送');
+    }
+  });
+
+  /* 发送消息（假回复） */
+  function sendMessage(inputEl) {
+    const text = inputEl.value.trim();
+    if (!text) return;
+    if (!currentChat) {
+      $('hero').style.display = 'none';
+      $('chatView').classList.add('active');
+      currentChat = '_tmp_' + Date.now();
+      CHATS[currentChat] = { title: text.slice(0, 18), msgs: [] };
+      renderChatList();
+    }
+    const chat = CHATS[currentChat];
+    chat.msgs.push({ role: 'user', text });
+    appendMsg({ role: 'user', text });
+    inputEl.value = '';
+    $('messages').scrollTop = $('messages').scrollHeight;
+
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'msg ai';
+    typingDiv.innerHTML = '<div class="ai-avatar">' + LOGO_SVG + '</div><div class="ai-body"><div class="typing"><span></span><span></span><span></span></div></div>';
+    $('messages').appendChild(typingDiv);
+    $('messages').scrollTop = $('messages').scrollHeight;
+
+    const replies = [
+      '收到。这是一个静态复刻演示，所有回复都是预设的占位内容——但排版和气泡样式和真实界面一致。',
+      '这个问题问得好。简单说：结构上分三层——侧栏导航、消息流、输入胶囊。需要我展开哪一层都可以继续问。',
+      '好的，已记录。当前页面为纯前端演示，数据保存在内存中，刷新后会重置。',
+    ];
+    setTimeout(() => {
+      typingDiv.remove();
+      const reply = replies[Math.floor(Math.random() * replies.length)];
+      chat.msgs.push({ role: 'ai', html: '<p>' + reply + '</p>' });
+      appendMsg({ role: 'ai', html: '<p>' + reply + '</p>' });
+      $('messages').scrollTop = $('messages').scrollHeight;
+    }, 1200 + Math.random() * 800);
+  }
+
+  /* ================= 下拉 / 菜单 ================= */
+  function renderModelMenu() {
+    const menu = $('modelMenu');
+    menu.innerHTML = MODELS.map(m =>
+      '<div class="mm-item" data-id="' + m.id + '">' +
+      (m.id === currentModel ? '<span class="check">✓</span>' : '') +
+      '<div>' + m.name + '</div><div class="d">' + m.desc + '</div></div>'
+    ).join('');
+    menu.querySelectorAll('.mm-item').forEach(item => {
+      item.onclick = () => {
+        currentModel = item.dataset.id;
+        const m = MODELS.find(x => x.id === currentModel);
+        $('modelBadge').textContent = m.id === '5.2' ? '5.2' : m.name.replace('ChatGPT ', '');
+        closeMenus();
+      };
+    });
+  }
+  function closeMenus() {
+    $('modelMenu').classList.remove('open');
+    $('userMenu').classList.remove('open');
+    $('logoMenu').classList.remove('open');
+    $('shareMenu').classList.remove('open');
+  }
+  $('modelBtn').onclick = e => {
+    e.stopPropagation();
+    const wasOpen = $('modelMenu').classList.contains('open');
+    closeMenus();
+    if (!wasOpen) { renderModelMenu(); $('modelMenu').classList.add('open'); }
+  };
+
+  /* 用户菜单（二级） */
+  $('userRow').onclick = e => {
+    e.stopPropagation();
+    const wasOpen = $('userMenu').classList.contains('open');
+    closeMenus();
+    if (!wasOpen) $('userMenu').classList.add('open');
+  };
+  $('topAvatar').onclick = e => {
+    e.stopPropagation();
+    if (window.innerWidth <= 768) { openSidebar(); return; }
+    const wasOpen = $('userMenu').classList.contains('open');
+    closeMenus();
+    if (!wasOpen) $('userMenu').classList.add('open');
+  };
+  document.addEventListener('click', closeMenus);
+  $('modelMenu').onclick = e => e.stopPropagation();
+  $('userMenu').onclick = e => e.stopPropagation();
+
+  /* ================= 设置弹窗（二级页面） ================= */
+  function openSettings(tab) {
+    closeMenus();
+    $('settingsModal').classList.add('open');
+    switchTab(tab || 'general');
+  }
+  function switchTab(name) {
+    document.querySelectorAll('.sm-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    document.querySelectorAll('.sm-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === name));
+  }
+  $('openSettings').onclick = () => openSettings('general');
+  $('closeSettings').onclick = () => $('settingsModal').classList.remove('open');
+  $('settingsModal').onclick = e => { if (e.target === $('settingsModal')) $('settingsModal').classList.remove('open'); };
+  document.querySelectorAll('.sm-tab').forEach(tab => tab.onclick = () => switchTab(tab.dataset.tab));
+  document.querySelectorAll('[data-switch]').forEach(sw => sw.onclick = () => sw.classList.toggle('on'));
+  document.querySelectorAll('[data-toast]').forEach(el => el.onclick = () => toast(el.dataset.toast));
+
+  /* 主题分段选择器 */
+  function applyTheme(mode) {
+    if (mode === 'system') {
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      document.documentElement.setAttribute('data-theme', mode);
+    }
+    $('themeToggle').textContent = mode === 'light' ? '🌙' : '☀️';
+  }
+  $('themeSeg').querySelectorAll('.seg-item').forEach(btn => {
+    btn.onclick = () => {
+      $('themeSeg').querySelectorAll('.seg-item').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      applyTheme(btn.dataset.themeVal);
+      toast('主题：' + btn.textContent);
+    };
+  });
+  $('themeToggle').onclick = () => {
+    const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+    const next = cur === 'light' ? 'dark' : 'light';
+    $('themeSeg').querySelectorAll('.seg-item').forEach(b =>
+      b.classList.toggle('on', b.dataset.themeVal === next));
+    applyTheme(next);
+  };
+
+  /* 强调色 */
+  $('accentDots').querySelectorAll('.dot').forEach(dot => {
+    dot.onclick = () => {
+      $('accentDots').querySelectorAll('.dot').forEach(d => d.classList.remove('sel'));
+      dot.classList.add('sel');
+      document.documentElement.style.setProperty('--accent', dot.dataset.color);
+      toast('强调色已更新');
+    };
+  });
+
+  /* 芯片组（语音） */
+  ['voiceChips', 'modeChips'].forEach(id => {
+    $(id).querySelectorAll('.chip').forEach(chip => {
+      chip.onclick = () => {
+        $(id).querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+        chip.classList.add('on');
+      };
+    });
+  });
+
+  /* ================= 三级页面：自定义指令 ================= */
+  $('rowCustomInstructions').onclick = () => $('ciModal').classList.add('open');
+  $('ciDone').onclick = () => { $('ciModal').classList.remove('open'); toast('自定义指令已保存（演示）'); };
+  $('ciCancel').onclick = () => $('ciModal').classList.remove('open');
+  $('ciModal').onclick = e => { if (e.target === $('ciModal')) $('ciModal').classList.remove('open'); };
+
+  /* ================= 三级页面：管理记忆 ================= */
+  $('manageMemoryBtn').onclick = () => $('memModal').classList.add('open');
+  $('memDone').onclick = () => $('memModal').classList.remove('open');
+  $('memModal').onclick = e => { if (e.target === $('memModal')) $('memModal').classList.remove('open'); };
+  $('memoryList').addEventListener('click', e => {
+    if (e.target.classList.contains('del')) {
+      e.target.closest('.memory-item').remove();
+      toast('已删除该条记忆');
+    }
+  });
+  $('clearAllMem').onclick = () => {
+    $('memoryList').innerHTML = '<div style="font-size:13px;color:var(--text-tertiary);padding:8px 0">暂无记忆内容</div>';
+    toast('已清空全部记忆');
+  };
+
+  /* ================= 退出登录 ================= */
+  const logout = () => { closeMenus(); $('settingsModal').classList.remove('open'); toast('演示页面：退出登录仅为占位'); };
+  $('menuLogout').onclick = logout;
+  $('accountLogout').onclick = logout;
+
+  /* ================= 语音模式 ================= */
+  function openVoice() { $('voiceOverlay').classList.add('open'); }
+  $('voiceOverlay').onclick = () => $('voiceOverlay').classList.remove('open');
+  $('micBtn').onclick = openVoice;
+  $('micBtn2').onclick = openVoice;
+
+  ['toolPill', 'toolPill2'].forEach(id => $(id).onclick = () => $(id).classList.toggle('on'));
+
+  /* ================= 侧栏抽屉（手机） ================= */
+  function openSidebar() { document.body.classList.add('sidebar-open'); }
+  function closeSidebar() { document.body.classList.remove('sidebar-open'); }
+  $('sidebarToggle').onclick = () => {
+    if (window.innerWidth <= 768) {
+      document.body.classList.contains('sidebar-open') ? closeSidebar() : openSidebar();
+    } else {
+      const sb = $('sidebar');
+      const hidden = sb.style.display === 'none';
+      sb.style.display = hidden ? 'flex' : 'none';
+    }
+  };
+  $('drawerMask').onclick = closeSidebar;
+
+  /* ================= 手机端边缘滑动手势 ================= */
+  let tsX = 0, tsY = 0, tracking = false;
+  document.addEventListener('touchstart', e => {
+    if (window.innerWidth > 768) return;   // 仅竖屏/窄视口启用
+    const t = e.touches[0];
+    tsX = t.clientX; tsY = t.clientY;
+    tracking = true;
+  }, { passive: true });
+  document.addEventListener('touchend', e => {
+    if (!tracking) return;
+    tracking = false;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - tsX, dy = t.clientY - tsY;
+    // 位移太小或纵向占主导：视为滚动/点击，不触发
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+    const open = document.body.classList.contains('sidebar-open');
+    if (dx > 0 && tsX <= 32 && !open) {
+      openSidebar();                        // 左边缘右滑 → 打开抽屉
+    } else if (dx < 0 && open) {
+      closeSidebar();                       // 左滑 → 关闭抽屉
+    }
+  }, { passive: true });
+
+  /* ================= 输入与发送 ================= */
+  $('newChatBtn').onclick = newChat;
+  $('heroSend').onclick = () => sendMessage($('heroInput'));
+  $('chatSend').onclick = () => sendMessage($('chatInput'));
+  $('heroInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage($('heroInput')); });
+  $('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage($('chatInput')); });
+
+  /* ================= Logo 菜单 / GPT 子菜单 ================= */
+  $('logoBtn').onclick = e => {
+    e.stopPropagation();
+    const wasOpen = $('logoMenu').classList.contains('open');
+    closeMenus();
+    if (!wasOpen) $('logoMenu').classList.add('open');
+  };
+  $('logoMenu').onclick = e => e.stopPropagation();
+  $('lmGpt').onclick = () => { closeMenus(); toast('当前已是 ChatGPT 5.2'); };
+  $('lmTemp').onclick = () => { closeMenus(); newChat(); toast('已开启临时聊天（演示：不会保存到历史记录）'); };
+
+  $('gptNav').onclick = e => {
+    e.stopPropagation();
+    $('gptSub').classList.toggle('open');
+  };
+  document.querySelectorAll('.gpt-item').forEach(item => {
+    item.onclick = e => {
+      e.stopPropagation();
+      const name = item.dataset.gpt;
+      newChat();
+      currentChat = '_gpt_' + Date.now();
+      CHATS[currentChat] = { title: name, msgs: [{ role: 'ai', html: '<p>你好，我是 <b>' + name + '</b>（演示）。可以问我任何问题，回复均为占位内容。</p>' }] };
+      renderChatList();
+      openChat(currentChat);
+    };
+  });
+
+  /* ================= 搜索聊天记录 ================= */
+  function renderSearchResults(q) {
+    const box = $('searchResults');
+    const kw = (q || '').trim().toLowerCase();
+    const hits = Object.entries(CHATS).filter(([, c]) => !kw || c.title.toLowerCase().includes(kw));
+    if (!hits.length) { box.innerHTML = '<div class="sr-empty">没有找到匹配的聊天记录</div>'; return; }
+    box.innerHTML = '';
+    for (const [key, chat] of hits) {
+      const div = document.createElement('div');
+      div.className = 'sr-item';
+      div.textContent = chat.title;
+      div.onclick = () => { $('searchModal').classList.remove('open'); openChat(key); };
+      box.appendChild(div);
+    }
+  }
+  $('searchBtn').onclick = e => {
+    e.stopPropagation();
+    closeMenus();
+    $('searchModal').classList.add('open');
+    $('searchInput').value = '';
+    renderSearchResults('');
+    setTimeout(() => $('searchInput').focus(), 50);
+  };
+  $('searchInput').addEventListener('input', e => renderSearchResults(e.target.value));
+
+  /* ================= 资料库 / Sora / 升级 ================= */
+  $('libNav').onclick = e => { e.stopPropagation(); closeMenus(); $('libModal').classList.add('open'); };
+  $('soraNav').onclick = e => { e.stopPropagation(); closeMenus(); $('soraModal').classList.add('open'); };
+  $('upgradeBtn').onclick = e => { e.stopPropagation(); closeMenus(); $('upModal').classList.add('open'); };
+  $('menuUpgrade').onclick = () => { closeMenus(); $('upModal').classList.add('open'); };
+  document.querySelectorAll('.lib-card').forEach(c => c.onclick = () => toast('演示：文件预览未接入'));
+
+  /* ================= 分享菜单 ================= */
+  $('shareBtn').onclick = e => {
+    e.stopPropagation();
+    const wasOpen = $('shareMenu').classList.contains('open');
+    closeMenus();
+    if (!wasOpen) $('shareMenu').classList.add('open');
+  };
+  $('shareMenu').onclick = e => e.stopPropagation();
+  $('smCopy').onclick = () => { closeMenus(); copyText(location.href); };
+  $('smPublic').onclick = () => { closeMenus(); toast('演示：公开链接已创建（占位）'); };
+
+  /* ================= 附件选择 ================= */
+  document.querySelectorAll('[data-attach]').forEach(btn => {
+    btn.onclick = () => $('fileInput').click();
+  });
+  $('fileInput').addEventListener('change', e => {
+    const n = e.target.files.length;
+    if (n) toast('已添加 ' + n + ' 个附件（演示，不会真正上传）');
+    e.target.value = '';
+  });
+
+  /* 弹窗：点遮罩关闭（通用） */
+  document.querySelectorAll('.modal-mask').forEach(mask => {
+    mask.addEventListener('click', e => { if (e.target === mask) mask.classList.remove('open'); });
+  });
+
+  /* ================= 初始化 ================= */
+  renderChatList();
+  openChat('static');
+  renderModelMenu();
+</script>
+</body>
+</html>

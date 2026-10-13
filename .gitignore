@@ -1,0 +1,21 @@
+# OS
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Python (为后续 Windows 客户端打包预留)
+__pycache__/
+*.pyc
+venv/
+dist/
+build/
+*.spec
+
+# Logs / temp
+*.log
+tmp/
