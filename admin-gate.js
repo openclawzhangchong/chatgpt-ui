@@ -47,23 +47,36 @@
   }
 
   /* —— 登录浮层 —— */
+  // 注意：样式完全自绘（rc-al-* 专用类 + 内联），不借前台 .settings-modal 等
+  // 布局类——那是「左 Tab 右内容」的两栏 flex 弹窗，借来会把浮层内容横排挤烂（v3.4.2 踩坑）。
   function openLogin() {
     var old = document.getElementById('rcAdminLogin');
     if (old) { old.classList.add('open'); return; }
     var mask = document.createElement('div');
     mask.className = 'modal-mask open';
     mask.id = 'rcAdminLogin';
-    mask.innerHTML =
-      '<div class="settings-modal" style="max-width:360px;height:auto;padding:28px">' +
-      '<button class="close-x" id="rcAlClose">✕</button>' +
-      '<div style="font-size:18px;font-weight:700;margin-bottom:4px">管理员登录</div>' +
-      '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:18px">登录后可在账号菜单进入管理后台</div>' +
-      '<div style="color:var(--danger,#e5484d);font-size:13px;min-height:20px;margin-bottom:8px" id="rcAlErr"></div>' +
-      '<div class="field" style="margin-bottom:14px"><label style="display:block;font-size:13px;color:var(--text-secondary);margin-bottom:5px">管理员用户名</label>' +
-      '<input id="rcAlName" style="width:100%;padding:9px 12px;border:1px solid var(--border,#e5e5e7);border-radius:8px;background:var(--bg,#fff);color:var(--text,#0d0d0e);font-size:14px;outline:none"></div>' +
-      '<div class="field" style="margin-bottom:18px"><label style="display:block;font-size:13px;color:var(--text-secondary);margin-bottom:5px">口令</label>' +
-      '<input id="rcAlPass" type="password" style="width:100%;padding:9px 12px;border:1px solid var(--border,#e5e5e7);border-radius:8px;background:var(--bg,#fff);color:var(--text,#0d0d0e);font-size:14px;outline:none"></div>' +
-      '<button class="btn" id="rcAlGo" style="width:100%;padding:10px;border:none;border-radius:8px;background:var(--accent,#19c37d);color:#fff;font-size:14px">登 录</button></div>';
+    var card = document.createElement('div');
+    card.style.cssText = 'width:340px;max-width:92vw;background:var(--bg-main,#fff);'
+      + 'border:1px solid var(--border,#e5e5e7);border-radius:16px;padding:26px 26px 22px;'
+      + 'box-shadow:0 20px 60px rgba(0,0,0,.45);position:relative;'
+      + 'font-size:14px;color:var(--text,#0d0d0e);box-sizing:border-box';
+    card.innerHTML =
+      '<button id="rcAlClose" style="position:absolute;top:10px;right:12px;background:none;border:none;'
+      + 'cursor:pointer;font-size:15px;color:var(--text-tertiary,#9a9aa2);line-height:1">✕</button>'
+      + '<div style="font-size:17px;font-weight:700;margin-bottom:4px">管理员登录</div>'
+      + '<div style="font-size:13px;color:var(--text-secondary,#6e6e76);margin-bottom:16px">登录后可在账号菜单进入管理后台</div>'
+      + '<div id="rcAlErr" style="color:var(--danger,#e5484d);font-size:13px;min-height:20px;margin-bottom:6px"></div>'
+      + '<label style="display:block;font-size:13px;color:var(--text-secondary,#6e6e76);margin-bottom:5px">管理员用户名</label>'
+      + '<input id="rcAlName" style="width:100%;padding:9px 12px;border:1px solid var(--border,#e5e5e7);'
+      + 'border-radius:8px;background:var(--bg,#fff);color:var(--text,#0d0d0e);font-size:14px;outline:none;'
+      + 'box-sizing:border-box;margin-bottom:12px">'
+      + '<label style="display:block;font-size:13px;color:var(--text-secondary,#6e6e76);margin-bottom:5px">口令</label>'
+      + '<input id="rcAlPass" type="password" style="width:100%;padding:9px 12px;border:1px solid var(--border,#e5e5e7);'
+      + 'border-radius:8px;background:var(--bg,#fff);color:var(--text,#0d0d0e);font-size:14px;outline:none;'
+      + 'box-sizing:border-box;margin-bottom:16px">'
+      + '<button id="rcAlGo" style="width:100%;padding:10px;border:none;border-radius:8px;'
+      + 'background:var(--accent,#19c37d);color:#fff;font-size:14px;cursor:pointer">登 录</button>';
+    mask.appendChild(card);
     document.body.appendChild(mask);
     var close = function () { mask.classList.remove('open'); setTimeout(function () { mask.remove(); }, 200); };
     mask.addEventListener('click', function (e) { if (e.target === mask) close(); });

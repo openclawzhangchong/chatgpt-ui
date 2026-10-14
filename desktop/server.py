@@ -32,7 +32,7 @@ import tools
 import models
 
 APP_TITLE = 'ChatGPT · 复刻版'
-APP_VERSION = '3.4.2'  # 版本号单一数据源：发布时只改这里，前端「关于」页与后台系统页动态拉取
+APP_VERSION = '3.4.3'  # 版本号单一数据源：发布时只改这里，前端「关于」页与后台系统页动态拉取
 HOST = '127.0.0.1'
 
 
