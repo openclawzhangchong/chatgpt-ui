@@ -149,13 +149,18 @@
     upModal.querySelector('.sub-modal').innerHTML =
       '<h3>ℹ️ 关于本应用</h3>' +
       '<div class="sub-desc" style="line-height:2">' +
-      '<b>ChatGPT UI 桌面版</b> v3.0.0<br>' +
+      '<b>ChatGPT UI 桌面版</b> <span id="abVer">v…</span><br>' +
       '架构：Python 壳（pywebview）+ 本地 MCP 工具 + Edge TTS + IndexedDB 持久化<br>' +
       '模型：' + esc(model) + '<br>' +
       '接口：OpenAI 兼容（本地直连）<br>' +
       '开源：github.com/openclawzhangchong/chatgpt-ui<br>' +
       '<span style="color:var(--text-tertiary)">由 AI 生成，仅供参考</span></div>' +
       '<div style="text-align:right;margin-top:10px"><button id="abClose" style="background:var(--btn-bg);color:var(--btn-text);border:none;border-radius:8px;padding:8px 18px;cursor:pointer;font-size:14px">关闭</button></div>';
+    // 版本号动态拉取（单一数据源 = server.py APP_VERSION，避免显示版本漂移）
+    fetch('/api/version').then(function (r) { return r.json(); }).then(function (d) {
+      var el = upModal.querySelector('#abVer');
+      if (el && d.version) el.textContent = 'v' + d.version;
+    }).catch(function () { /* 拉不到就保持占位，纯网页模式不显示版本 */ });
     upModal.querySelector('#abClose').onclick = function () { upModal.classList.remove('open'); };
     $('upgradeBtn').onclick = function (e) { e.stopPropagation(); closeMenus(); upModal.classList.add('open'); };
     $('menuUpgrade').onclick = function () { closeMenus(); upModal.classList.add('open'); };

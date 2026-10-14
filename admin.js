@@ -102,7 +102,14 @@
     }).catch(function () { signOut(); });
   }
 
-  function loadAll() { loadModels(); loadVoice(); }
+  function loadAll() { loadModels(); loadVoice(); loadVersion(); }
+
+  /* —— 版本号（单一数据源 = server.py APP_VERSION，动态拉取防漂移） —— */
+  function loadVersion() {
+    fetch('/api/version').then(function (r) { return r.json(); }).then(function (d) {
+      if (d.version) $('#sysVer').textContent = 'ChatGPT UI 桌面版 v' + d.version;
+    }).catch(function () { $('#sysVer').textContent = '版本未知（本地服务未连接）'; });
+  }
 
   /* —— 朗读设置（v3.4.1：后台默认音色） —— */
   var voiceCache = [];   // [{id,name,group}]

@@ -23,6 +23,7 @@
 7. **打包**：`desktop/build_desktop.py` 三步（同步前端到 ui/ → PyInstaller --onefile --windowed → 拷 EXE+config.json 到桌面）。EXE 旁 config.json 优先于内置配置，改 key 不用重打包。
 8. **v3.4.0 安全默认值**：管理员默认口令 18596950000（仅以 PBKDF2 20 万轮哈希形式存在于随包 `admin.default.json`，仓库 public 也可接受）。**首次登录后请立即在后台「修改口令」**——换随机盐、与默认值彻底脱钩。模型 Key 同理：只写不读、接口一律打码。
 9. **v3.4.0 路由注册顺序**：`/admin` 与 `/api/*` 必须注册在静态 catch-all `/{fname:path}` **之前**，否则会被劫持成 404（v3.2 踩过的坑同款位置）。
+10. **版本号铁律（v3.4.2 起）**：单一数据源 = `desktop/server.py` 的 `APP_VERSION` 常量；发版时改它 + CHANGELOG + README 徽章，前端「关于」页/后台「系统」页自动动态拉取 `/api/version`，**禁止在 HTML/JS 里再写死版本串**（v3.4.1 曾漏更后台页版本，v3.4.2 修掉）。测试前先 `netstat` 查 18765 有无残留 EXE/僵尸进程——旧进程会冒充新代码响应，得出假测试结果。
 
 ## 📋 未完成 / 后续方向（按优先级）
 

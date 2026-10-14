@@ -32,6 +32,7 @@ import tools
 import models
 
 APP_TITLE = 'ChatGPT · 复刻版'
+APP_VERSION = '3.4.2'  # 版本号单一数据源：发布时只改这里，前端「关于」页与后台系统页动态拉取
 HOST = '127.0.0.1'
 
 
@@ -283,7 +284,13 @@ def api_tools():
     import tools as _tools
     return {'tools': _tools.describe(), 'export_dir': str(_tools.export_dir()),
             'mcp': _tools.REMOTE_STATUS,
+            'version': APP_VERSION,
             'remote': any(t.get('remote') for t in _tools.REGISTRY)}
+
+
+@app.get('/api/version')
+def api_version():
+    return {'version': APP_VERSION}
 
 async def _json_body(request):
     """解析请求体 JSON；兼容非 UTF-8 客户端（如 Windows 命令行按 GBK 发送的场景）。"""
