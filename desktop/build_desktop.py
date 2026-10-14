@@ -22,7 +22,7 @@ DESKTOP_CANDIDATES = [
 ]
 
 FRONTEND_FILES = ['index.html', 'realchat.js', 'storage.js', 'tts.js', 'toolbox.js', 'compress.js',
-                  'voice.js', 'admin-gate.js', 'admin.html', 'admin.js', 'config.example.js']
+                  'voice.js', 'admin-gate.js', 'dynamic.js', 'admin.html', 'admin.js', 'config.example.js']
 
 
 def step_sync_ui():

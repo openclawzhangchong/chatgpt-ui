@@ -1,8 +1,8 @@
 # ChatGPT UI —— ChatGPT 完美复刻（真实对话 · Python 桌面版）
 
-> 100% 还原 ChatGPT 官方界面观感，接入 OpenAI 兼容大模型 API **真实对话**；v3.4 起拥有 **41 个工具**（17 内建 + 18 本地自建 MCP + 6 远程 MCP）+ **管理后台**（/admin 模型池管理，管理员口令登录），对话中 AI 可抓网页（含公众号）、生成/读取 Word/Excel/PPT/PDF、二维码、操作桌面文件、查天气、搜资料，支持语音听说闭环与微软全量音色选择。
+> 100% 还原 ChatGPT 官方界面观感，接入 OpenAI 兼容大模型 API **真实对话**；v3.5 起拥有 **41 个工具**（17 内建 + 18 本地自建 MCP + 6 远程 MCP）+ **八分区管理后台**（模型池/人设 GPT/首页卡片/对话与朗读/外观品牌/MCP 工具/系统/账号，MCP 保存热重载即时生效），对话中 AI 可抓网页（含公众号）、生成/读取 Word/Excel/PPT/PDF、二维码、操作桌面文件、查天气、搜资料，支持语音听说闭环与微软全量音色选择。
 
-![Version](https://img.shields.io/badge/version-v3.4.1-19c37d) ![License](https://img.shields.io/badge/license-MIT-blue) ![Tech](https://img.shields.io/badge/stack-HTML%20%2B%20JS%20%2B%20Python%20%E5%A3%B3-orange) ![MCP](https://img.shields.io/badge/MCP%20tools-41-blueviolet) ![Frontend%20deps](https://img.shields.io/badge/frontend%20deps-0-success)
+![Version](https://img.shields.io/badge/version-v3.5.0-19c37d) ![License](https://img.shields.io/badge/license-MIT-blue) ![Tech](https://img.shields.io/badge/stack-HTML%20%2B%20JS%20%2B%20Python%20%E5%A3%B3-orange) ![MCP](https://img.shields.io/badge/MCP%20tools-41-blueviolet) ![Frontend%20deps](https://img.shields.io/badge/frontend%20deps-0-success)
 
 ## ✨ 项目简介
 
@@ -98,6 +98,7 @@ chatgpt-ui/
 ├── compress.js         # v3.1 上下文压缩（确定性折叠 + v3.3 LLM 摘要）
 ├── voice.js            # v3.3 语音闭环（音色分组下拉试听 + Web Speech API 输入）
 ├── admin-gate.js       # v3.4 前台管理员入口（登录浮层 + 后台链接）
+├── dynamic.js          # v3.5 后台配置的前台应用（品牌/人设/首页卡片下发）
 ├── admin.html          # v3.4 管理后台页（/admin，模型池管理）
 ├── admin.js            # v3.4 管理后台逻辑
 ├── config.example.js   # 网页版 API 配置模板（入库）

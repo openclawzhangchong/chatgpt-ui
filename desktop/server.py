@@ -32,7 +32,7 @@ import tools
 import models
 
 APP_TITLE = 'ChatGPT · 复刻版'
-APP_VERSION = '3.4.3'  # 版本号单一数据源：发布时只改这里，前端「关于」页与后台系统页动态拉取
+APP_VERSION = '3.5.0'  # 版本号单一数据源：发布时只改这里，前端「关于」页与后台系统页动态拉取
 HOST = '127.0.0.1'
 
 
@@ -82,12 +82,13 @@ MODEL = CFG.get('model') or 'Qwen3.6-35B-A3B-Vision'
 
 
 def _load_extensions_async():
-    """后台挂载扩展工具：11 个新内建（tools_extra）+ 本地 MCP server 池（builtinMcp）
-    + config.json mcpServers 远程 MCP。远程连接需要数秒，不阻塞服务就绪。"""
+    """后台挂载扩展工具：11 个新内建（tools_extra）+ 本地 MCP server 池（后台 builtinMcp 开关）
+    + 后台 mcpRemote 远程 MCP（v3.5.0 起以后台 settings 为准，config.json 只作首次种子）。
+    远程连接需要数秒，不阻塞服务就绪。"""
     try:
         import tools as _tools
-        _tools.load_extensions(CFG.get('mcpServers') or [], CFG.get('builtinMcp') or [],
-                               log=lambda m: print('[mcp]', m))
+        remote, builtin = models.mcp_effective()
+        _tools.load_extensions(remote, builtin, log=lambda m: print('[mcp]', m))
     except Exception as e:
         print('[mcp] 扩展装载异常：', e)
 
@@ -208,11 +209,28 @@ async def chat_completions(request: Request):
                 yield 'data: [DONE]\n\n'
             return StreamingResponse(_no_model(), media_type='text/event-stream')
     p_base, p_key, p_model = provider['base_url'], provider['api_key'], provider['model']
-    p_max = provider.get('max_output_tokens') or MAX_TOKENS
+    # 输出上限/温度裁决链（v3.5.0）：模型池条目 > 后台「对话默认」 > config 兜底
+    s = models.load_settings()
+    p_max = provider.get('max_output_tokens') or (s.get('maxTokens') if isinstance(s.get('maxTokens'), int) else None) or MAX_TOKENS
     p_temp = provider.get('temperature')
     if p_temp is None:
+        p_temp = s.get('temperature')
+    if p_temp is None:
         p_temp = TEMP
+    # 全局附加提示词 + 语气（v3.5.0，后台「对话默认」配置；server 端注入，前台零改动）
+    sys_extra = (s.get('sysExtra') or '').strip()
+    tone = s.get('tone') or 'professional'
+    tone_text = {'concise': '回答务必简洁：先给结论，再给最短必要的解释，不展开铺垫。',
+                 'humorous': '回答可以轻松幽默一些，但不得牺牲信息准确性。'}.get(tone, '')
+    inject = (('。' if not sys_extra.endswith(('.', '。', '！', '!')) else '') if sys_extra else '')
+    suffix = (sys_extra + inject if sys_extra else '') + (tone_text if tone_text else '')
     msgs = list(msgs_in)
+    if suffix:
+        msgs = [dict(m) for m in msgs]
+        if msgs and msgs[0].get('role') == 'system':
+            msgs[0]['content'] = (msgs[0].get('content') or '') + '\n\n' + suffix
+        else:
+            msgs.insert(0, {'role': 'system', 'content': suffix})
 
     def gen():
         yield sse({'choices': [{'delta': {'role': 'assistant'}, 'index': 0}]})
@@ -475,6 +493,183 @@ def api_models():
             'activeId': models.default_provider_id()}
 
 
+# ---------- 前台公开配置（v3.5.0：人设 / 首页卡片 / 外观品牌） ----------
+
+@app.get('/api/personas')
+def api_personas():
+    return {'personas': models.enabled_personas()}
+
+
+@app.get('/api/starters')
+def api_starters():
+    return {'starters': models.enabled_starters()}
+
+
+@app.get('/api/appearance')
+def api_appearance():
+    s = models.load_settings()
+    return {'appName': (s.get('appName') or '').strip() or 'ChatGPT',
+            'theme': s.get('theme') or 'system',
+            'accent': (s.get('accent') or '').strip()}
+
+
+def _sanitize_persona_list(raw):
+    """人设整表校验：name 必填、avatar 限 4 字符（emoji）、prompt 限 3000 字、sort 0-999。"""
+    out = []
+    for i, p in enumerate(raw or []):
+        if not isinstance(p, dict):
+            continue
+        name = str(p.get('name') or '').strip()[:24]
+        if not name:
+            continue
+        out.append({'id': str(p.get('id') or '').strip()[:40] or ('ps_' + str(i) + '_' + str(int(time.time()))),
+                    'name': name,
+                    'desc': str(p.get('desc') or '').strip()[:60],
+                    'avatar': str(p.get('avatar') or '').strip()[:4],
+                    'prompt': str(p.get('prompt') or '').strip()[:3000],
+                    'enabled': bool(p.get('enabled', True)),
+                    'sort': max(0, min(999, int(p.get('sort') or 0))),
+                    'builtin': bool(p.get('builtin', False))})
+    return out
+
+
+def _sanitize_starter_list(raw):
+    """首页卡片整表校验：最多 12 张，title/prompt 必填。"""
+    out = []
+    for i, s0 in enumerate(raw or []):
+        if not isinstance(s0, dict):
+            continue
+        title = str(s0.get('title') or '').strip()[:24]
+        prompt = str(s0.get('prompt') or '').strip()[:500]
+        if not title or not prompt:
+            continue
+        if len(out) >= 12:
+            break
+        out.append({'id': str(s0.get('id') or '').strip()[:40] or ('st_' + str(i) + '_' + str(int(time.time()))),
+                    'title': title, 'prompt': prompt,
+                    'enabled': bool(s0.get('enabled', True)),
+                    'sort': max(0, min(999, int(s0.get('sort') or 0)))})
+    return out
+
+
+@app.post('/api/admin/personas')
+async def admin_save_personas(request: Request):
+    claims, err = _admin_gate(request)
+    if err:
+        return err
+    b = await _json_body(request)
+    rows = _sanitize_persona_list(b.get('personas'))
+    s = models.load_settings()
+    s['personas'] = rows
+    models.save_settings(s)
+    return {'ok': True, 'count': len(rows)}
+
+
+@app.post('/api/admin/starters')
+async def admin_save_starters(request: Request):
+    claims, err = _admin_gate(request)
+    if err:
+        return err
+    b = await _json_body(request)
+    rows = _sanitize_starter_list(b.get('starters'))
+    s = models.load_settings()
+    s['starters'] = rows
+    models.save_settings(s)
+    return {'ok': True, 'count': len(rows)}
+
+
+@app.post('/api/admin/mcp')
+async def admin_save_mcp(request: Request):
+    """保存 MCP 配置并热重载：摘除全部 ms_ 前缀旧工具后重挂，增删即时生效不用重启。"""
+    claims, err = _admin_gate(request)
+    if err:
+        return err
+    b = await _json_body(request)
+    remote_in = b.get('remote') if isinstance(b.get('remote'), list) else []
+    remote = []
+    for m in remote_in:
+        if not isinstance(m, dict):
+            continue
+        name = str(m.get('name') or '').strip()[:30]
+        url = str(m.get('url') or '').strip()
+        if not name or not (url.startswith('http://') or url.startswith('https://')):
+            continue
+        remote.append({'name': name, 'transport': str(m.get('transport') or 'http')[:10],
+                       'url': url[:300], 'comment': str(m.get('comment') or '').strip()[:80]})
+    builtin_in = b.get('builtin') if isinstance(b.get('builtin'), dict) else {}
+    builtin = {k: bool(builtin_in.get(k)) for k in models.BUILTIN_MCP_ALL}
+    s = models.load_settings()
+    s['mcpRemote'] = remote
+    s['builtinMcp'] = builtin
+    models.save_settings(s)
+    import asyncio
+    import tools as _tools
+    result = await asyncio.to_thread(_tools.reload_extensions, remote,
+                                     [k for k in models.BUILTIN_MCP_ALL if builtin[k]],
+                                     lambda m: print('[mcp]', m))
+    return {'ok': True, 'remote': len(remote), 'total': result['total']}
+
+
+@app.post('/api/admin/account')
+async def admin_account(request: Request):
+    """改用户名 / 改口令（都需要原口令验证；一次可改其一或两者）。"""
+    claims, err = _admin_gate(request)
+    if err:
+        return err
+    b = await _json_body(request)
+    old_pw = b.get('oldPassword') or ''
+    changed = []
+    if isinstance(b.get('name'), str) and b['name'].strip():
+        ok, why = models.change_admin_name(b['name'], old_pw)
+        if not ok:
+            return JSONResponse({'error': why}, status_code=400)
+        changed.append('用户名')
+    if b.get('newPassword'):
+        ok, why = models.change_password(old_pw, b['newPassword'])
+        if not ok:
+            return JSONResponse({'error': why}, status_code=400)
+        changed.append('口令')
+    if not changed:
+        return JSONResponse({'error': '没有要修改的内容'}, status_code=400)
+    return {'ok': True, 'changed': '、'.join(changed), 'name': models.load_admin().get('name')}
+
+
+@app.post('/api/admin/open')
+async def admin_open(request: Request):
+    """打开系统页的已知路径（导出目录 / 运行日志）。只收枚举值不收路径——
+    绝不做任意路径打开口，守卫在枚举这层就锁死。"""
+    claims, err = _admin_gate(request)
+    if err:
+        return err
+    b = await _json_body(request)
+    import tools as _tools
+    targets = {'export': str(_tools.export_dir()),
+               'log': os.path.join(os.environ.get('TEMP', '.'), 'ChatGPT-UI.log')}
+    path = targets.get(b.get('target') or '')
+    if not path or not os.path.exists(path):
+        return JSONResponse({'error': '目标不存在'}, status_code=404)
+    import asyncio
+    await asyncio.to_thread(os.startfile, path)  # noqa: S606 - 仅枚举白名单路径
+    return {'ok': True}
+
+
+@app.get('/api/admin/system')
+def admin_system(request: Request):
+    claims, err = _admin_gate(request)
+    if err:
+        return err
+    import tools as _tools
+    log_path = os.path.join(os.environ.get('TEMP', '.'), 'ChatGPT-UI.log')
+    remote, builtin = models.mcp_effective()
+    return {'version': APP_VERSION,
+            'tools': len(_tools.REGISTRY),
+            'mcpRemote': [{'name': m.get('name'), 'url': m.get('url')} for m in remote],
+            'builtinMcp': [k for k in models.BUILTIN_MCP_ALL if (models.load_settings().get('builtinMcp') or {}).get(k)],
+            'exportDir': str(_tools.export_dir()),
+            'logPath': log_path,
+            'logExists': os.path.isfile(log_path)}
+
+
 @app.post('/api/admin/login')
 async def admin_login(request: Request):
     b = await _json_body(request)
@@ -590,10 +785,35 @@ async def admin_save_settings(request: Request):
         return err
     b = await _json_body(request)
     data = models.load_settings()
-    # 只收认得的键，别当自由透传口（全站纪律同款）
+    # 只收认得的键并各自校验钳位，别当自由透传口（全站纪律同款）
     v = b.get('ttsVoice')
     if isinstance(v, str) and v:
         data['ttsVoice'] = v[:80]
+    v = b.get('sysExtra')
+    if isinstance(v, str):
+        data['sysExtra'] = v.strip()[:2000]
+    v = b.get('tone')
+    if v in ('professional', 'concise', 'humorous'):
+        data['tone'] = v
+    v = b.get('temperature')
+    if v is None:
+        data['temperature'] = None
+    elif isinstance(v, (int, float)) and 0 <= float(v) <= 2:
+        data['temperature'] = float(v)
+    v = b.get('maxTokens')
+    if v is None:
+        data['maxTokens'] = None
+    elif isinstance(v, (int, float)) and int(v) >= 256:
+        data['maxTokens'] = int(v)
+    v = b.get('appName')
+    if isinstance(v, str):
+        data['appName'] = v.strip()[:20]
+    v = b.get('theme')
+    if v in ('light', 'dark', 'system'):
+        data['theme'] = v
+    v = b.get('accent')
+    if isinstance(v, str):
+        data['accent'] = v.strip()[:9] if (v.strip() == '' or re.match(r'^#[0-9a-fA-F]{6}$', v.strip())) else data['accent']
     models.save_settings(data)
     return {'ok': True, 'settings': data}
 

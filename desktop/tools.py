@@ -264,6 +264,16 @@ def execute(name, args):
 REMOTE_STATUS = []  # [{name, status, server, tool_count}] 供 /api/tools 展示
 
 
+def reload_extensions(mcp_conf_list=None, builtin_names=None, log=print):
+    """v3.5.0 热重载：摘掉所有 ms_ 前缀的 MCP 工具（内建 17+11 个不动），重跑装载。
+    后台保存 MCP 配置后调用——增删即时生效，不用重启 EXE。"""
+    removed = [t['name'] for t in REGISTRY if t['name'].startswith('ms_')]
+    REGISTRY[:] = [t for t in REGISTRY if not t['name'].startswith('ms_')]
+    log('[mcp] 热重载：摘除 %d 个旧工具' % len(removed))
+    load_extensions(mcp_conf_list, builtin_names, log=log)
+    return {'removed': len(removed), 'total': len(REGISTRY)}
+
+
 def load_extensions(mcp_conf_list=None, builtin_names=None, log=print):
     """启动时挂载：① 11 个新内建工具（tools_extra）② config.json mcpServers 远程 MCP
     ③ config.json builtinMcp 本地自建 MCP server 池。幂等保护：重复调用不会重复注册。"""

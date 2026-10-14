@@ -1,16 +1,15 @@
 /**
- * admin.js · v3.4.0 管理后台逻辑（配 admin.html，路由 /admin）
+ * admin.js · v3.5.0 管理后台逻辑（配 admin.html，路由 /admin）
  * ------------------------------------------------------------------
- * 登录闸门 → 模型池管理（增删改/启停/默认/测试）→ 改口令。
- * token 存 sessionStorage（与前台同源，前台登录态实时同步；关页即清，符合本地工具习惯）。
- * Key 只写不读：列表接口一律打码，编辑时留空 = 不改（dog2027 §7.3 同款纪律）。
+ * 八分区：模型池 / 人设 GPT / 首页卡片 / 对话与朗读 / 外观品牌 / MCP 工具 / 系统 / 账号。
+ * token 存 sessionStorage（与前台同源共享）；Key 只写不读、编辑留空 = 不改。
  */
 (function () {
   'use strict';
   var $ = function (s) { return document.querySelector(s); };
   var TK = 'RC_ADMIN_TOKEN';
   var token = sessionStorage.getItem(TK) || '';
-  var cache = { providers: [], defaultId: '' };
+  var cache = { providers: [], defaultId: '', voices: [] };
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
@@ -57,7 +56,7 @@
     });
   }
 
-  /* —— 登录 / 登出 —— */
+  /* ================= 登录 / 登出 / 导航 ================= */
   $('#gateCard').addEventListener('submit', function (e) {
     e.preventDefault();
     var name = $('#admName').value.trim(), pw = $('#admPass').value;
@@ -85,7 +84,7 @@
     $('#gate').style.display = 'none';
     $('#app').classList.add('show');
     $('#admLabel').textContent = name ? ('· ' + name) : '';
-    loadAll();
+    loadPage('models');
   }
   function signOut() {
     token = '';
@@ -95,80 +94,32 @@
   }
   $('#btnOut').addEventListener('click', signOut);
 
-  // 带旧 token 打开本页：先验一次会话，过了直接进
   if (token) {
-    api('session').then(function () { return api('models'); }).then(function (d) {
-      enter(d.adminName);
-    }).catch(function () { signOut(); });
+    api('session').then(function () { enter(null); }).catch(function () { signOut(); });
   }
 
-  function loadAll() { loadModels(); loadVoice(); loadVersion(); }
-
-  /* —— 版本号（单一数据源 = server.py APP_VERSION，动态拉取防漂移） —— */
-  function loadVersion() {
-    fetch('/api/version').then(function (r) { return r.json(); }).then(function (d) {
-      if (d.version) $('#sysVer').textContent = 'ChatGPT UI 桌面版 v' + d.version;
-    }).catch(function () { $('#sysVer').textContent = '版本未知（本地服务未连接）'; });
-  }
-
-  /* —— 朗读设置（v3.4.1：后台默认音色） —— */
-  var voiceCache = [];   // [{id,name,group}]
-  function loadVoice() {
-    Promise.all([api('settings'), fetch('/api/tts/voices').then(function (r) { return r.json(); })])
-      .then(function (rs) {
-        var settings = rs[0] || {};
-        voiceCache = rs[1].voices || [];
-        var sel = $('#vSel');
-        var groups = {};
-        voiceCache.forEach(function (v) { (groups[v.group || '其他'] = groups[v.group || '其他'] || []).push(v); });
-        sel.innerHTML = '';
-        Object.keys(groups).forEach(function (g) {
-          var og = document.createElement('optgroup'); og.label = g;
-          groups[g].forEach(function (v) {
-            var o = document.createElement('option');
-            o.value = v.id; o.textContent = v.name;
-            og.appendChild(o);
-          });
-          sel.appendChild(og);
-        });
-        var cur = settings.ttsVoice;
-        if (!voiceCache.some(function (v) { return v.id === cur; })) cur = voiceCache.length ? voiceCache[0].id : cur;
-        sel.value = cur;
-        var found = voiceCache.filter(function (v) { return v.id === cur; })[0];
-        $('#voiceMeta').textContent = found ? (found.group + ' · ' + found.id) : (cur || '未设置');
-      })
-      .catch(function (e) { $('#voiceMeta').textContent = '加载失败：' + e.message; });
-  }
-  $('#vSave').addEventListener('click', function () {
-    var v = $('#vSel').value;
-    api('settings', { method: 'POST', body: { ttsVoice: v } }).then(function () {
-      toast('默认音色已保存：' + (v || ''));
-    }).catch(function (e) { toast(e.message); });
+  var loadedPages = {};
+  document.querySelectorAll('#sideNav button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#sideNav button').forEach(function (x) { x.classList.toggle('on', x === b); });
+      var page = b.dataset.page;
+      document.querySelectorAll('.page').forEach(function (p) { p.classList.toggle('on', p.id === 'page-' + page); });
+      loadPage(page);
+    });
   });
-  var tryAudio = null, tryCtrl = null;
-  $('#vTry').addEventListener('click', function () {
-    if (tryCtrl) { tryCtrl.abort(); tryCtrl = null; return; }  // 再点一次 = 停止
-    tryCtrl = new AbortController();
-    var v = $('#vSel').value;
-    $('#voiceMeta').textContent = '试听中…';
-    fetch('/api/tts?text=' + encodeURIComponent('你好，这是后台默认音色的试听效果。')
-      + '&voice=' + encodeURIComponent(v), { signal: tryCtrl.signal })
-      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
-      .then(function (blob) {
-        if (!tryAudio) tryAudio = new Audio();
-        tryAudio.src = URL.createObjectURL(blob);
-        tryAudio.onended = function () { tryCtrl = null; URL.revokeObjectURL(tryAudio.src); loadVoice(); };
-        tryAudio.onerror = function () { tryCtrl = null; loadVoice(); };
-        return tryAudio.play();
-      })
-      .catch(function (err) {
-        tryCtrl = null; loadVoice();
-        if (err && err.name === 'AbortError') return;
-        toast('试听失败：' + (err.message || err));
-      });
-  });
+  function loadPage(page) {
+    if (page === 'models') loadModels();
+    else if (page === 'personas') loadPersonas();
+    else if (page === 'starters') loadStarters();
+    else if (page === 'dialog') loadDialog();
+    else if (page === 'appearance') loadAppearance();
+    else if (page === 'mcp') loadMcp();
+    else if (page === 'system') loadSystem();
+    else if (page === 'account') loadAccount();
+    loadedPages[page] = true;
+  }
 
-  /* —— 模型池 —— */
+  /* ================= ① 模型池 ================= */
   function loadModels() {
     api('models').then(function (d) {
       cache.providers = d.models || [];
@@ -176,7 +127,6 @@
       renderModels();
     }).catch(function (e) { $('#pvList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; });
   }
-
   function renderModels() {
     var box = $('#pvList');
     if (!cache.providers.length) {
@@ -186,7 +136,6 @@
     box.innerHTML = '';
     cache.providers.forEach(function (p) { box.appendChild(modelCard(p)); });
   }
-
   function modelCard(p) {
     var el = document.createElement('div');
     el.className = 'card' + (p.enabled ? '' : ' off');
@@ -235,8 +184,6 @@
     });
     return el;
   }
-
-  /* —— 新增 / 编辑弹层 —— */
   var editingId = null;
   function openDlg(p) {
     editingId = p ? p.id : null;
@@ -272,18 +219,311 @@
     }).catch(function (e) { toast(e.message); });
   });
 
-  /* —— 改口令 —— */
-  $('#btnPw').addEventListener('click', function () {
-    $('#pwOld').value = ''; $('#pwNew').value = '';
-    $('#pwMask').classList.add('open');
+  /* ============ 行编辑通用（人设/卡片/MCP 列表：编辑中副本，保存才落库） ============ */
+  function bindRowInputs(el, rows, i, repaint) {
+    el.querySelectorAll('[data-f]').forEach(function (inp) {
+      var f = inp.dataset.f;
+      var ev = (inp.type === 'checkbox') ? 'change' : 'input';
+      inp.addEventListener(ev, function () {
+        rows[i][f] = (inp.type === 'checkbox') ? inp.checked : inp.value;
+      });
+    });
+    el.querySelectorAll('button[data-a]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var a = b.dataset.a;
+        if (a === 'del') rows.splice(i, 1);
+        else {
+          var j = a === 'up' ? i - 1 : i + 1;
+          if (rows[j] !== undefined) { var t = rows[i]; rows[i] = rows[j]; rows[j] = t; }
+        }
+        repaint();
+      });
+    });
+  }
+
+  /* ================= ② 人设 GPT ================= */
+  var psRows = [];
+  function loadPersonas() {
+    api('settings').then(function (s) {
+      psRows = (s.personas || []).map(function (p) { return Object.assign({}, p); });
+      psPaint();
+    }).catch(function (e) { $('#psList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; });
+  }
+  function psPaint() {
+    var box = $('#psList');
+    box.innerHTML = psRows.length ? '' : '<div class="empty">还没有人设，点「新增人设」创建</div>';
+    psRows.forEach(function (p, i) {
+      var el = document.createElement('div');
+      el.className = 'row-edit' + (p.enabled ? '' : ' off');
+      el.innerHTML = '<div class="row-grid">'
+        + '<input data-f="avatar" maxlength="4" title="图标（emoji）" value="' + esc(p.avatar || '') + '" placeholder="🤖">'
+        + '<input data-f="name" maxlength="24" placeholder="显示名" value="' + esc(p.name || '') + '">'
+        + '<input data-f="desc" maxlength="60" placeholder="一句话说明（显示在选择卡片上）" value="' + esc(p.desc || '') + '"></div>'
+        + '<textarea data-f="prompt" placeholder="人设系统提示词（最多 3000 字）">' + esc(p.prompt || '') + '</textarea>'
+        + '<div class="row-foot">'
+        + '<label class="chk"><input type="checkbox" data-f="enabled" ' + (p.enabled ? 'checked' : '') + '>启用</label>'
+        + '<span class="hint">顺序</span><input data-f="sort" type="number" min="0" max="999" value="' + (p.sort || 0) + '">'
+        + (p.builtin ? '<span class="badge builtin">预置</span>' : '')
+        + '<span class="grow"></span>'
+        + '<button class="btn ghost sm" data-a="up" ' + (i === 0 ? 'disabled' : '') + '>↑</button>'
+        + '<button class="btn ghost sm" data-a="down" ' + (i === psRows.length - 1 ? 'disabled' : '') + '>↓</button>'
+        + '<button class="btn ghost sm" data-a="del">删除</button></div>';
+      bindRowInputs(el, psRows, i, psPaint);
+      box.appendChild(el);
+    });
+  }
+  $('#psAdd').addEventListener('click', function () {
+    psRows.push({ id: '', name: '', desc: '', avatar: '🤖', prompt: '', enabled: true, sort: psRows.length, builtin: false });
+    psPaint();
   });
-  $('#pwCancel').addEventListener('click', function () { $('#pwMask').classList.remove('open'); });
-  $('#pwMask').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('open'); });
-  $('#pwSave').addEventListener('click', function () {
-    api('password', { method: 'POST', body: { oldPassword: $('#pwOld').value, newPassword: $('#pwNew').value } })
-      .then(function () {
-        $('#pwMask').classList.remove('open');
-        toast('口令已修改');
-      }).catch(function (e) { toast(e.message); });
+  $('#psSave').addEventListener('click', function () {
+    var bad = psRows.filter(function (p) { return !(p.name || '').trim(); }).length;
+    if (bad) { toast(bad + ' 个人设没填名字，补上再保存'); return; }
+    api('personas', { method: 'POST', body: { personas: psRows } }).then(function (r) {
+      toast('人设已保存（' + r.count + ' 个），前台立即生效');
+      loadPersonas();
+    }).catch(function (e) { toast(e.message); });
+  });
+
+  /* ================= ③ 首页卡片 ================= */
+  var stRows = [];
+  function loadStarters() {
+    api('settings').then(function (s) {
+      stRows = (s.starters || []).map(function (x) { return Object.assign({}, x); });
+      stPaint();
+    }).catch(function (e) { $('#stList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; });
+  }
+  function stPaint() {
+    var box = $('#stList');
+    box.innerHTML = stRows.length ? '' : '<div class="empty">还没有卡片，点「新增卡片」创建</div>';
+    stRows.forEach(function (s0, i) {
+      var el = document.createElement('div');
+      el.className = 'row-edit' + (s0.enabled ? '' : ' off');
+      el.innerHTML = '<div class="row-grid2">'
+        + '<input data-f="title" maxlength="24" placeholder="标题" value="' + esc(s0.title || '') + '">'
+        + '<label class="chk" style="padding-bottom:8px"><input type="checkbox" data-f="enabled" ' + (s0.enabled ? 'checked' : '') + '>启用</label>'
+        + '<span></span></div>'
+        + '<textarea data-f="prompt" placeholder="点击后填入输入框的提示词" style="min-height:44px">' + esc(s0.prompt || '') + '</textarea>'
+        + '<div class="row-foot">'
+        + '<span class="hint">顺序</span><input data-f="sort" type="number" min="0" max="999" value="' + (s0.sort || 0) + '">'
+        + '<span class="grow"></span>'
+        + '<button class="btn ghost sm" data-a="up" ' + (i === 0 ? 'disabled' : '') + '>↑</button>'
+        + '<button class="btn ghost sm" data-a="down" ' + (i === stRows.length - 1 ? 'disabled' : '') + '>↓</button>'
+        + '<button class="btn ghost sm" data-a="del">删除</button></div>';
+      bindRowInputs(el, stRows, i, stPaint);
+      box.appendChild(el);
+    });
+  }
+  $('#stAdd').addEventListener('click', function () {
+    if (stRows.length >= 12) { toast('最多 12 张，先删掉几张'); return; }
+    stRows.push({ id: '', title: '', prompt: '', enabled: true, sort: stRows.length });
+    stPaint();
+  });
+  $('#stSave').addEventListener('click', function () {
+    api('starters', { method: 'POST', body: { starters: stRows } }).then(function (r) {
+      toast('首页卡片已保存（' + r.count + ' 张），前台立即生效');
+      loadStarters();
+    }).catch(function (e) { toast(e.message); });
+  });
+
+  /* ================= ④ 对话与朗读 ================= */
+  function loadDialog() {
+    Promise.all([api('settings'), fetch('/api/tts/voices').then(function (r) { return r.json(); })])
+      .then(function (rs) {
+        var s = rs[0] || {};
+        $('#dSys').value = s.sysExtra || '';
+        $('#dTone').value = s.tone || 'professional';
+        $('#dTemp').value = s.temperature != null ? s.temperature : '';
+        $('#dMax').value = s.maxTokens != null ? s.maxTokens : '';
+        cache.voices = rs[1].voices || [];
+        var sel = $('#vSel');
+        var groups = {};
+        cache.voices.forEach(function (v) { (groups[v.group || '其他'] = groups[v.group || '其他'] || []).push(v); });
+        sel.innerHTML = '';
+        Object.keys(groups).forEach(function (g) {
+          var og = document.createElement('optgroup'); og.label = g;
+          groups[g].forEach(function (v) {
+            var o = document.createElement('option');
+            o.value = v.id; o.textContent = v.name;
+            og.appendChild(o);
+          });
+          sel.appendChild(og);
+        });
+        var cur = s.ttsVoice;
+        if (!cache.voices.some(function (v) { return v.id === cur; })) cur = cache.voices.length ? cache.voices[0].id : cur;
+        sel.value = cur;
+        paintVoiceMeta(cur);
+      }).catch(function (e) { $('#voiceMeta').textContent = '加载失败：' + e.message; });
+  }
+  function paintVoiceMeta(id) {
+    var v = cache.voices.filter(function (x) { return x.id === id; })[0];
+    $('#voiceMeta').textContent = v ? (v.group + ' · ' + v.id) : (id || '未设置');
+  }
+  $('#vSel').addEventListener('change', function () {
+    api('settings', { method: 'POST', body: { ttsVoice: $('#vSel').value } }).then(function () {
+      paintVoiceMeta($('#vSel').value);
+      toast('默认音色已保存');
+    }).catch(function (e) { toast(e.message); });
+  });
+  var tryAudio = null, tryCtrl = null;
+  $('#vTry').addEventListener('click', function () {
+    if (tryCtrl) { tryCtrl.abort(); tryCtrl = null; return; }
+    tryCtrl = new AbortController();
+    $('#voiceMeta').textContent = '试听中…';
+    fetch('/api/tts?text=' + encodeURIComponent('你好，这是后台默认音色的试听效果。')
+      + '&voice=' + encodeURIComponent($('#vSel').value), { signal: tryCtrl.signal })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+      .then(function (blob) {
+        if (!tryAudio) tryAudio = new Audio();
+        tryAudio.src = URL.createObjectURL(blob);
+        tryAudio.onended = function () { tryCtrl = null; URL.revokeObjectURL(tryAudio.src); paintVoiceMeta($('#vSel').value); };
+        tryAudio.onerror = function () { tryCtrl = null; paintVoiceMeta($('#vSel').value); };
+        return tryAudio.play();
+      })
+      .catch(function (err) {
+        tryCtrl = null; paintVoiceMeta($('#vSel').value);
+        if (err && err.name === 'AbortError') return;
+        toast('试听失败：' + (err.message || err));
+      });
+  });
+  $('#dlgSave').addEventListener('click', function () {
+    api('settings', { method: 'POST', body: {
+      sysExtra: $('#dSys').value, tone: $('#dTone').value,
+      temperature: $('#dTemp').value !== '' ? Number($('#dTemp').value) : null,
+      maxTokens: $('#dMax').value !== '' ? Number($('#dMax').value) : null
+    } }).then(function () { toast('对话默认已保存，下一条消息起生效'); })
+      .catch(function (e) { toast(e.message); });
+  });
+
+  /* ================= ⑤ 外观品牌 ================= */
+  function loadAppearance() {
+    api('settings').then(function (s) {
+      $('#aName').value = s.appName || '';
+      $('#aTheme').value = s.theme || 'system';
+      $('#aAccent').value = s.accent || '#19c37d';
+    }).catch(function (e) { toast(e.message); });
+  }
+  $('#apSave').addEventListener('click', function () {
+    api('settings', { method: 'POST', body: {
+      appName: $('#aName').value.trim(), theme: $('#aTheme').value, accent: $('#aAccent').value
+    } }).then(function () { toast('外观已保存，刷新前台生效'); })
+      .catch(function (e) { toast(e.message); });
+  });
+
+  /* ================= ⑥ MCP 工具 ================= */
+  var bmState = {}, rmRows = [];
+  var BM_LABELS = { web: '🌐 网页抓取/搜索', files: '📁 文件搜索/哈希', office: '📝 Word/Excel/PPT 读写',
+                    dev: '🔧 JSON/编解码/正则', pdf: '📄 PDF 读取', media: '🎨 二维码/图片信息' };
+  function loadMcp() {
+    api('settings').then(function (s) {
+      bmState = Object.assign({}, s.builtinMcp || {});
+      rmRows = (s.mcpRemote || []).map(function (m) { return Object.assign({}, m); });
+      bmPaint(); rmPaint(); paintMcpMeta();
+    }).catch(function (e) { toast(e.message); });
+  }
+  function paintMcpMeta() {
+    api('system').then(function (d) {
+      $('#mcpMeta').textContent = '当前已装载 ' + d.tools + ' 个工具 · 本地池开启 '
+        + (d.builtinMcp || []).length + '/6 组 · 远程 ' + (d.mcpRemote || []).length + ' 个服务器';
+    }).catch(function () {});
+  }
+  function bmPaint() {
+    var box = $('#bmList');
+    box.innerHTML = '';
+    Object.keys(BM_LABELS).forEach(function (k) {
+      var l = document.createElement('label');
+      l.className = 'chk';
+      l.innerHTML = '<input type="checkbox" ' + (bmState[k] ? 'checked' : '') + '> ' + BM_LABELS[k];
+      l.querySelector('input').addEventListener('change', function (e) { bmState[k] = e.target.checked; });
+      box.appendChild(l);
+    });
+  }
+  function rmPaint() {
+    var box = $('#rmList');
+    box.innerHTML = rmRows.length ? '' : '<div class="empty">没有远程 MCP，点「新增」添加</div>';
+    rmRows.forEach(function (m, i) {
+      var el = document.createElement('div');
+      el.className = 'row-edit';
+      el.innerHTML = '<div class="row-grid" style="grid-template-columns:110px 1fr 40px">'
+        + '<input data-f="name" maxlength="30" placeholder="名称" value="' + esc(m.name || '') + '">'
+        + '<input data-f="url" placeholder="https://…（MCP 端点地址）" value="' + esc(m.url || '') + '">'
+        + '<button class="btn ghost sm" data-a="del" title="删除">✕</button></div>'
+        + '<input data-f="comment" maxlength="80" placeholder="备注（选填）" value="' + esc(m.comment || '') + '">';
+      el.querySelectorAll('[data-f]').forEach(function (inp) {
+        inp.addEventListener('input', function () { rmRows[i][inp.dataset.f] = inp.value; });
+      });
+      el.querySelector('button[data-a=del]').addEventListener('click', function () {
+        rmRows.splice(i, 1); rmPaint();
+      });
+      box.appendChild(el);
+    });
+  }
+  $('#rmAdd').addEventListener('click', function () {
+    rmRows.push({ name: '', transport: 'http', url: '', comment: '' });
+    rmPaint();
+  });
+  $('#mcpSave').addEventListener('click', function () {
+    var badUrl = rmRows.filter(function (m) {
+      return (m.url || '').trim() && !/^https?:\/\//.test(m.url.trim());
+    }).length;
+    if (badUrl) { toast(badUrl + ' 个远程地址不是 http(s) 开头，改一下再保存'); return; }
+    toast('保存并热重载中…');
+    api('mcp', { method: 'POST', body: { remote: rmRows, builtin: bmState } }).then(function (r) {
+      toast('已生效：共 ' + r.total + ' 个工具（远程 ' + r.remote + ' 个服务器）');
+      paintMcpMeta();
+    }).catch(function (e) { toast(e.message); });
+  });
+
+  /* ================= ⑦ 系统 ================= */
+  function loadSystem() {
+    api('system').then(function (d) {
+      var box = $('#sysList');
+      box.innerHTML = '';
+      function kv(k, v, action) {
+        var el = document.createElement('div');
+        el.className = 'kv';
+        el.innerHTML = '<span class="k">' + esc(k) + '</span><span class="v">' + esc(v) + '</span>';
+        if (action) el.appendChild(action);
+        box.appendChild(el);
+      }
+      function openBtn(target, label) {
+        var b = document.createElement('button');
+        b.className = 'btn ghost sm';
+        b.style.marginLeft = '10px';
+        b.textContent = label;
+        b.onclick = function () {
+          api('open', { method: 'POST', body: { target: target } })
+            .then(function () { toast('已打开'); })
+            .catch(function (e) { toast(e.message || '打开失败'); });
+        };
+        return b;
+      }
+      kv('版本', 'v' + d.version);
+      kv('已装载工具', d.tools + ' 个');
+      kv('本地工具池', (d.builtinMcp || []).join('、') || '全关');
+      kv('远程 MCP', (d.mcpRemote || []).map(function (m) { return m.name; }).join('、') || '无');
+      kv('导出目录', d.exportDir, openBtn('export', '打开目录'));
+      kv('运行日志', d.logPath, openBtn('log', '打开日志'));
+    }).catch(function (e) { $('#sysList').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; });
+  }
+
+  /* ================= ⑧ 账号 ================= */
+  function loadAccount() {
+    api('session').then(function (d) {
+      $('#acNameNow').value = d.name || '';
+    }).catch(function () {});
+    $('#acName').value = ''; $('#acOld').value = ''; $('#acNew').value = '';
+  }
+  $('#acSave').addEventListener('click', function () {
+    var body = { oldPassword: $('#acOld').value };
+    if ($('#acName').value.trim()) body.name = $('#acName').value.trim();
+    if ($('#acNew').value) body.newPassword = $('#acNew').value;
+    if (!body.name && !body.newPassword) { toast('没有要修改的内容'); return; }
+    if (!body.oldPassword) { toast('请先输入原口令'); return; }
+    api('account', { method: 'POST', body: body }).then(function (r) {
+      toast(r.changed + '已修改');
+      loadAccount();
+      $('#admLabel').textContent = r.name ? ('· ' + r.name) : '';
+    }).catch(function (e) { toast(e.message); });
   });
 })();

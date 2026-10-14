@@ -100,7 +100,8 @@ def _norm_provider(p):
         v = p.get(k)
         p[k] = int(v) if isinstance(v, (int, float)) and v > 0 else None
     t = p.get('temperature')
-    p['temperature'] = float(t) if isinstance(t, (int, float)) and 0 <= float(t) <= 2 else 0.7
+    # 未设温度存 None（不是 0.7）——否则「模型条目 > 全局默认」的裁决链会被硬默认短路
+    p['temperature'] = float(t) if isinstance(t, (int, float)) and 0 <= float(t) <= 2 else None
     p['enabled'] = bool(p.get('enabled', True))
     p['builtin'] = bool(p.get('builtin', False))
     p['created_at'] = int(p.get('created_at') or int(time.time() * 1000))
@@ -318,6 +319,19 @@ def change_password(old_password, new_password):
     return True, None
 
 
+def change_admin_name(new_name, old_password):
+    """改管理员用户名：验证原口令后才允许（防旁人借用已登录的机器顺手改名）。"""
+    new_name = (new_name or '').strip()
+    if not (1 <= len(new_name) <= 24):
+        return False, '用户名 1~24 个字符'
+    if not verify_password(old_password):
+        return False, '原口令不正确'
+    cfg = load_admin()
+    cfg['name'] = new_name
+    save_admin(cfg)
+    return True, None
+
+
 def _b64url(raw):
     return base64.urlsafe_b64encode(raw).rstrip(b'=').decode('ascii')
 
@@ -356,26 +370,106 @@ def token_from_request(request):
     return h[7:] if h.startswith('Bearer ') else ''
 
 
-# ---------- 全局设置（v3.4.1：后台默认音色等，轻量键值本地库） ----------
-# 现阶段的「本地数据库」就是这组 JSON 文件：models.json / admin.json / settings.json，
-# 增删改查全在 Python 侧完成，原子写入防坏档。将来要多设备同步时，把这三个文件的
-# 读写函数换成 Worker/D1 调用即可，上层 API 零改动。
+# ---------- 全局设置（v3.5.0：后台八分区的本地「数据库」） ----------
+# settings.json 现在承载：外观品牌 / 对话默认 / 人设 GPT / 首页卡片 / MCP 配置 / 朗读。
+# 与 dog2027 的 app_config + personas + starters + providers 配置表对位；
+# 本地单机量小，一张键值表足够，将来上 Worker/D1 时按键拆表即可。
+
+PERSONA_PRESETS = [
+    {'id': 'ps_data', 'name': '数据分析 GPT', 'desc': '数据解读、图表建议、Excel 公式', 'avatar': '📊',
+     'prompt': '你是一位资深数据分析专家。请始终以该角色的专业口吻回答用户的问题，回答使用简体中文，'
+               '擅长把数据讲成结论，主动给出图表建议与 Excel/SQL 实现。', 'enabled': True, 'sort': 0, 'builtin': True},
+    {'id': 'ps_write', 'name': '写作助手 GPT', 'desc': '公文、文案、论文润色', 'avatar': '✍️',
+     'prompt': '你是一位专业写作助手。请始终以该角色的专业口吻回答用户的问题，回答使用简体中文，'
+               '重视结构（先结论后展开）与措辞分寸，可按用户要求的文体改写。', 'enabled': True, 'sort': 1, 'builtin': True},
+    {'id': 'ps_slide', 'name': '课件排版 GPT', 'desc': '教学课件、讲义、排版建议', 'avatar': '🎨',
+     'prompt': '你是一位教学课件设计专家。请始终以该角色的专业口吻回答用户的问题，回答使用简体中文，'
+               '熟悉课堂讲授节奏、知识点分层与版式呈现。', 'enabled': True, 'sort': 2, 'builtin': True},
+]
+
+BUILTIN_MCP_ALL = ['web', 'files', 'office', 'dev', 'pdf', 'media']
+
 
 def load_settings():
     with _lock:
         data = _read_json(RUNTIME_SETTINGS)
         if not isinstance(data, dict):
-            # 种子：随包 config.json 的 ttsVoice（老配置平滑迁移，用户已有选择不丢）
+            # 种子：随包 config.json 的 ttsVoice / mcpServers / builtinMcp（老配置平滑迁移）
             cfg = _read_json(os.path.join(_bundled_dir(), 'config.json')) or {}
-            data = {'ttsVoice': cfg.get('ttsVoice') or TTS_VOICE_DEFAULT}
+            data = {
+                'ttsVoice': cfg.get('ttsVoice') or TTS_VOICE_DEFAULT,
+                # 外观品牌
+                'appName': '',            # 空 = 用默认「ChatGPT」
+                'theme': 'system',        # light / dark / system
+                'accent': '',             # 空 = 用前台默认绿
+                # 对话默认
+                'sysExtra': '',           # 全局附加系统提示词
+                'temperature': None,      # 全局默认温度（模型池条目未设时用）
+                'maxTokens': None,        # 全局默认输出上限（同上）
+                'tone': 'professional',   # professional / concise / humorous
+                # 人设 GPT（预置三个，来自前台写死项，可在后台增删改）
+                'personas': [dict(p) for p in PERSONA_PRESETS],
+                # 首页卡片
+                'starters': [],
+                # MCP：远程服务器列表 + 本地池开关
+                'mcpRemote': [dict(m) for m in (cfg.get('mcpServers') or [])],
+                'builtinMcp': {k: True for k in BUILTIN_MCP_ALL if k in (cfg.get('builtinMcp') or BUILTIN_MCP_ALL)}
+                              or {k: True for k in BUILTIN_MCP_ALL},
+            }
             _write_json(RUNTIME_SETTINGS, data)
         data.setdefault('ttsVoice', TTS_VOICE_DEFAULT)
+        data.setdefault('appName', '')
+        data.setdefault('theme', 'system')
+        data.setdefault('accent', '')
+        data.setdefault('sysExtra', '')
+        if data.get('temperature') is None and 'temperature' not in data:
+            data['temperature'] = None
+        data.setdefault('maxTokens', None)
+        data.setdefault('tone', 'professional')
+        data.setdefault('personas', [dict(p) for p in PERSONA_PRESETS])
+        data.setdefault('starters', [])
+        data.setdefault('mcpRemote', [])
+        bm = data.setdefault('builtinMcp', {})
+        for k in BUILTIN_MCP_ALL:
+            bm.setdefault(k, True)
+        # 一次性迁移：v3.4.x 的老 settings.json 没有 MCP 段，从随包 config.json 补种。
+        # 用标记位防重复——后台里刻意删空的配置不会被种子回填。
+        if not data.get('mcpMigrated'):
+            cfg = _read_json(os.path.join(_bundled_dir(), 'config.json')) or {}
+            if cfg.get('mcpServers') and not data['mcpRemote']:
+                data['mcpRemote'] = [dict(m) for m in cfg['mcpServers']]
+            if cfg.get('builtinMcp'):
+                for k in cfg['builtinMcp']:
+                    if k in BUILTIN_MCP_ALL:
+                        data['builtinMcp'][k] = True
+            data['mcpMigrated'] = True
+            _write_json(RUNTIME_SETTINGS, data)
         return data
 
 
 def save_settings(data):
     with _lock:
         _write_json(RUNTIME_SETTINGS, data)
+
+
+def enabled_personas():
+    rows = [dict(p) for p in load_settings().get('personas') or [] if p.get('enabled')]
+    rows.sort(key=lambda p: (p.get('sort') or 0, p.get('name') or ''))
+    return rows
+
+
+def enabled_starters():
+    rows = [dict(s) for s in load_settings().get('starters') or [] if s.get('enabled')]
+    rows.sort(key=lambda s: (s.get('sort') or 0, s.get('title') or ''))
+    return rows
+
+
+def mcp_effective():
+    """MCP 实际生效配置：settings 的 mcpRemote/builtinMcp（v3.5.0 起以后台为准）。"""
+    s = load_settings()
+    remote = [dict(m) for m in s.get('mcpRemote') or [] if isinstance(m, dict) and m.get('name')]
+    builtin = [k for k in BUILTIN_MCP_ALL if (s.get('builtinMcp') or {}).get(k)]
+    return remote, builtin
 
 
 # ---------- 连通性测试（真发一条 1-token 请求） ----------

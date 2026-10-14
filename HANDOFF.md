@@ -2,7 +2,12 @@
 
 > 给下一次迭代的你（或下一次会话的我）：本页登记已完成基线 + 未完成事项 + 接手要点。
 
-## ✅ 当前基线（v3.4.1，2026-10-14）
+## ✅ 当前基线（v3.5.0，2026-10-15）
+
+- **后台八分区**（/admin，左侧导航）：模型池 / 人设 GPT / 首页卡片 / 对话与朗读 / 外观品牌 / MCP 工具 / 系统 / 账号；对齐 dog2027 全部后台能力并本地化（热重载 MCP 是它没有的）。UI 全部自有 ChatGPT 风，不学 dog2027 视觉。
+- **settings.json = 本地「数据库」主表**：外观/对话默认/人设/首页卡片/MCP 配置/朗读音色一张键值表（%APPDATA%），与 models.json（模型池）、admin.json（凭据）构成三表；将来上 Worker/D1 按键拆表。
+- **前台动态下发**（dynamic.js 零侵入）：/api/appearance（品牌/主题/强调色）、/api/personas（GPT 列表，静态项兜底）、/api/starters（hero 建议卡片）；对话默认（sysExtra/tone/温度/上限）全部服务端注入，前台零改动。
+- **MCP 热重载**：tools.reload_extensions 摘 ms_ 前缀重挂，后台保存即生效；config.json 的 mcpServers/builtinMcp 一次性迁入 settings（标记位 mcpMigrated 防回填）。
 
 - **网页版**：index.html（UI 框架，红线不动）+ realchat.js（真实对话 + 模型菜单真实化）+ storage.js（IndexedDB）+ tts.js（朗读）+ toolbox.js（菜单换血）+ compress.js（上下文压缩）+ voice.js（语音闭环 + 音色分组下拉试听）+ admin-gate.js（管理员入口）+ admin.html/admin.js（/admin 后台页）+ config.js（gitignore）。
 - **桌面版**：`desktop/` Python 壳——main.py（pywebview + **系统托盘** + uvicorn）+ server.py（OpenAI 兼容 SSE 代理 + 工具循环 + TTS + 导出 + 配置诊断日志 + **/api/models + /api/admin/* + /admin 路由**）+ tools.py（注册表 + 扩展装载）+ tools_extra.py（11 内建）+ mcp_client.py（远程 MCP 客户端）+ mcp_servers/（本地自建 MCP server 池：web/files/office/dev/pdf/media）+ **models.py（模型池 + 管理员鉴权，v3.4.0 新增）**。**已交付桌面 EXE（含自定义图标），双击即用。**

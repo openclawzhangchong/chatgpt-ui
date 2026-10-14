@@ -20,6 +20,13 @@
   button { font-family: inherit; cursor: pointer; }
   code { font-family: Consolas, "Courier New", monospace; font-size: 12px;
     background: var(--bg-2); padding: 1px 6px; border-radius: 4px; }
+  input, select, textarea { font-family: inherit; }
+  .field input, .field select, .field textarea { width: 100%; padding: 8px 11px;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
+    color: var(--text); font-size: 13.5px; outline: none; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+  .field label { display: block; font-size: 12.5px; color: var(--text-2); margin-bottom: 4px; }
+  .field { margin-bottom: 12px; }
 
   /* —— 登录闸门 —— */
   #gate { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
@@ -30,32 +37,44 @@
     font-size: 22px; font-weight: 700; margin-bottom: 18px; }
   .gate-card h1 { font-size: 20px; margin-bottom: 4px; }
   .gate-card .sub { color: var(--text-2); font-size: 13px; margin-bottom: 22px; }
-  .field { margin-bottom: 14px; }
-  .field label { display: block; font-size: 13px; color: var(--text-2); margin-bottom: 5px; }
-  .field input, .field select { width: 100%; padding: 9px 12px; border: 1px solid var(--border);
-    border-radius: 8px; background: var(--bg); color: var(--text); font-size: 14px; outline: none; }
-  .field input:focus, .field select:focus { border-color: var(--accent); }
-  .btn { padding: 9px 16px; border: none; border-radius: 8px; font-size: 14px;
+  .btn { padding: 8px 15px; border: none; border-radius: 8px; font-size: 13.5px;
     background: var(--accent); color: #fff; }
   .btn:hover { background: var(--accent-2); }
   .btn.block { width: 100%; }
   .btn.ghost { background: transparent; color: var(--text-2); border: 1px solid var(--border); }
   .btn.ghost:hover { background: var(--bg-hover); color: var(--text); }
   .btn.danger { background: var(--danger); }
-  .btn.sm { padding: 5px 11px; font-size: 13px; border-radius: 7px; }
+  .btn.sm { padding: 5px 11px; font-size: 12.5px; border-radius: 7px; }
   .btn:disabled { opacity: .55; cursor: not-allowed; }
   .gate-err { color: var(--danger); font-size: 13px; min-height: 20px; margin-bottom: 10px; }
 
-  /* —— 后台主体 —— */
-  #app { display: none; max-width: 980px; margin: 0 auto; padding: 28px 22px 60px; }
+  /* —— 布局：左侧导航 + 右侧分区 —— */
+  #app { display: none; max-width: 1080px; margin: 0 auto; padding: 24px 20px 60px; }
   #app.show { display: block; }
-  .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 26px; }
+  .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
   .top .t { font-size: 19px; font-weight: 700; }
   .top .t span { font-size: 13px; color: var(--text-3); font-weight: 400; margin-left: 10px; }
   .top .ops { display: flex; gap: 8px; }
+  .layout { display: flex; gap: 20px; align-items: flex-start; }
+  nav.side { width: 148px; flex-shrink: 0; background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: 14px; padding: 10px 8px; position: sticky; top: 20px; }
+  nav.side button { display: block; width: 100%; text-align: left; padding: 9px 12px;
+    border: none; background: none; border-radius: 8px; font-size: 13.5px; color: var(--text-2);
+    margin-bottom: 2px; }
+  nav.side button:hover { background: var(--bg-hover); color: var(--text); }
+  nav.side button.on { background: var(--accent); color: #fff; }
+  .main { flex: 1; min-width: 0; }
+  .page { display: none; }
+  .page.on { display: block; }
+  @media (max-width: 760px) {
+    .layout { flex-direction: column; }
+    nav.side { width: 100%; position: static; display: flex; flex-wrap: wrap; gap: 4px; }
+    nav.side button { width: auto; }
+  }
+
   .sec { background: var(--card); border: 1px solid var(--border); border-radius: 14px;
     padding: 20px; margin-bottom: 20px; }
-  .sec h2 { font-size: 15px; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; }
+  .sec h2 { font-size: 15px; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .sec .desc { color: var(--text-2); font-size: 13px; margin-bottom: 16px; }
 
   .card { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px;
@@ -72,6 +91,27 @@
   .badge.def { background: rgba(242,163,60,.16); color: #c47f1f; }
   .empty { color: var(--text-3); font-size: 13px; text-align: center; padding: 26px 0; }
 
+  /* 行编辑（人设/卡片/MCP 远程列表通用） */
+  .row-edit { border: 1px solid var(--border); border-radius: 11px; padding: 12px 14px; margin-bottom: 10px; }
+  .row-edit.off { opacity: .6; }
+  .row-grid { display: grid; grid-template-columns: 52px 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+  .row-grid2 { display: grid; grid-template-columns: 1fr 110px 96px; gap: 8px; align-items: end; }
+  .row-foot { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+  .row-foot .grow { flex: 1; }
+  .row-foot input[type=number] { width: 72px; padding: 4px 8px; border: 1px solid var(--border);
+    border-radius: 7px; background: var(--bg); color: var(--text); font-size: 12.5px; }
+  .row-foot textarea { width: 100%; min-height: 56px; resize: vertical; padding: 7px 10px;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text);
+    font-size: 12.5px; outline: none; }
+  .chk { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--text-2); cursor: pointer; }
+  .hint { font-size: 12px; color: var(--text-3); margin-top: 3px; }
+
+  .kv { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border);
+    font-size: 13.5px; gap: 12px; flex-wrap: wrap; }
+  .kv:last-child { border-bottom: none; }
+  .kv .k { color: var(--text-2); }
+  .kv .v { text-align: right; word-break: break-all; }
+
   /* —— 弹层 —— */
   .mask { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none;
     align-items: center; justify-content: center; z-index: 20; padding: 20px; }
@@ -79,9 +119,7 @@
   .dlg { background: var(--card); border-radius: 14px; padding: 22px; width: 440px;
     max-width: 100%; max-height: 88vh; overflow: auto; }
   .dlg h3 { font-size: 16px; margin-bottom: 14px; }
-  .dlg .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .dlg .foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
-  .hint { font-size: 12px; color: var(--text-3); margin-top: 3px; }
 
   #toast { position: fixed; left: 50%; bottom: 36px; transform: translateX(-50%) translateY(20px);
     background: var(--text); color: var(--bg); padding: 9px 18px; border-radius: 9px;
@@ -96,7 +134,7 @@
   <form class="gate-card" id="gateCard">
     <div class="gate-logo">A</div>
     <h1>管理后台</h1>
-    <div class="sub">ChatGPT UI 桌面版 · 模型池与系统配置</div>
+    <div class="sub">ChatGPT UI 桌面版 · 模型 / 人设 / 卡片 / 对话 / 外观 / MCP</div>
     <div class="gate-err" id="gateErr"></div>
     <div class="field"><label>管理员用户名</label><input id="admName" autocomplete="username" required></div>
     <div class="field"><label>口令</label><input id="admPass" type="password" autocomplete="current-password" required></div>
@@ -111,48 +149,150 @@
     <div class="t">管理后台<span id="admLabel"></span></div>
     <div class="ops">
       <a href="/"><button class="btn ghost sm">返回前台</button></a>
-      <button class="btn ghost sm" id="btnPw">修改口令</button>
       <button class="btn ghost sm" id="btnOut">退出登录</button>
     </div>
   </div>
 
-  <div class="sec">
-    <h2>模型池
-      <button class="btn sm" id="btnAdd" style="margin-left:auto">+ 新增模型</button>
-    </h2>
-    <div class="desc">前台模型菜单只读这里启用的条目；「默认」是每次打开时的选中项。内置模型随安装包分发，可停用不可删除。</div>
-    <div id="pvList"></div>
-  </div>
+  <div class="layout">
+    <nav class="side" id="sideNav">
+      <button data-page="models" class="on">模型池</button>
+      <button data-page="personas">人设 GPT</button>
+      <button data-page="starters">首页卡片</button>
+      <button data-page="dialog">对话与朗读</button>
+      <button data-page="appearance">外观品牌</button>
+      <button data-page="mcp">MCP 工具</button>
+      <button data-page="system">系统</button>
+      <button data-page="account">账号</button>
+    </nav>
 
-  <div class="sec">
-    <h2>朗读设置</h2>
-    <div class="desc">前台没有手动选过音色时，朗读使用这里的默认音色；设置面板里手动选择过的以用户选择优先。</div>
-    <div class="card" style="align-items:center;gap:12px">
-      <div style="min-width:0;flex:1">
-        <div class="nm">默认音色</div>
-        <div class="meta" id="voiceMeta">加载中…</div>
+    <div class="main">
+      <!-- ① 模型池 -->
+      <div class="page on" id="page-models">
+        <div class="sec">
+          <h2>模型池 <button class="btn sm" id="btnAdd" style="margin-left:auto">+ 新增模型</button></h2>
+          <div class="desc">前台模型菜单只读这里启用的条目；「默认」是每次打开时的选中项。内置模型随安装包分发，可停用不可删除。</div>
+          <div id="pvList"></div>
+        </div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <select id="vSel" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;max-width:230px"></select>
-        <button class="btn ghost sm" id="vTry">▶ 试听</button>
-        <button class="btn sm" id="vSave">保存</button>
-      </div>
-    </div>
-  </div>
 
-  <div class="sec">
-    <h2>系统</h2>
-    <div class="desc">桌面版本地信息。</div>
-    <div class="card" style="align-items:center">
-      <div>
-        <div class="nm">版本</div>
-        <div class="meta" id="sysVer">加载中…</div>
+      <!-- ② 人设 GPT -->
+      <div class="page" id="page-personas">
+        <div class="sec">
+          <h2>人设 GPT <button class="btn sm" id="psAdd" style="margin-left:auto">+ 新增人设</button>
+            <button class="btn sm" id="psSave">保存</button></h2>
+          <div class="desc">前台侧栏「GPT」列表从这里下发；启用的才显示。改完点「保存」立即生效。</div>
+          <div id="psList"></div>
+        </div>
+      </div>
+
+      <!-- ③ 首页卡片 -->
+      <div class="page" id="page-starters">
+        <div class="sec">
+          <h2>首页卡片 <button class="btn sm" id="stAdd" style="margin-left:auto">+ 新增卡片</button>
+            <button class="btn sm" id="stSave">保存</button></h2>
+          <div class="desc">前台首页输入框下方显示（最多 12 张）；用户点击后提示词自动填入输入框。</div>
+          <div id="stList"></div>
+        </div>
+      </div>
+
+      <!-- ④ 对话与朗读 -->
+      <div class="page" id="page-dialog">
+        <div class="sec">
+          <h2>对话默认 <button class="btn sm" id="dlgSave" style="margin-left:auto">保存</button></h2>
+          <div class="desc">服务端注入，前台无需改动；模型池条目自带温度/上限时优先用条目的。</div>
+          <div class="field"><label>全局附加系统提示词（拼在每条对话的 system 末尾）</label>
+            <textarea id="dSys" rows="4" placeholder="例如：回答使用简体中文；先结论后展开；代码块标注语言。"></textarea></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+            <div class="field"><label>默认语气</label>
+              <select id="dTone">
+                <option value="professional">专业</option>
+                <option value="concise">简洁</option>
+                <option value="humorous">轻松幽默</option>
+              </select></div>
+            <div class="field"><label>默认温度（0~2，留空 0.7）</label>
+              <input id="dTemp" type="number" min="0" max="2" step="0.1" placeholder="留空用默认"></div>
+            <div class="field"><label>默认输出上限（tokens，留空 16384）</label>
+              <input id="dMax" type="number" min="256" step="256" placeholder="留空用默认"></div>
+          </div>
+        </div>
+        <div class="sec">
+          <h2>朗读默认音色</h2>
+          <div class="desc">前台没有手动选过音色时，朗读使用这里的默认音色；用户手动选择的始终优先。</div>
+          <div class="card" style="align-items:center;gap:12px">
+            <div style="min-width:0;flex:1">
+              <div class="nm">默认音色</div>
+              <div class="meta" id="voiceMeta">加载中…</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <select id="vSel" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;max-width:230px"></select>
+              <button class="btn ghost sm" id="vTry">▶ 试听</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ⑤ 外观品牌 -->
+      <div class="page" id="page-appearance">
+        <div class="sec">
+          <h2>外观品牌 <button class="btn sm" id="apSave" style="margin-left:auto">保存</button></h2>
+          <div class="desc">应用名会替换前台侧栏与标题里的「ChatGPT」；用户手动改过主题/强调色的以用户为准。</div>
+          <div class="field"><label>应用名（留空 = 默认 ChatGPT）</label><input id="aName" maxlength="20" placeholder="例如：课堂助手"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="field"><label>默认主题（用户没手动选过时生效）</label>
+              <select id="aTheme">
+                <option value="system">跟随系统</option>
+                <option value="light">浅色</option>
+                <option value="dark">深色</option>
+              </select></div>
+            <div class="field"><label>默认强调色（留空 = 默认绿）</label>
+              <input id="aAccent" type="color" style="height:38px;padding:4px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ⑥ MCP 工具 -->
+      <div class="page" id="page-mcp">
+        <div class="sec">
+          <h2>本地工具池开关 <button class="btn sm" id="mcpSave" style="margin-left:auto">保存并热重载</button></h2>
+          <div class="desc">勾选 = 对话中 AI 可用该组工具；保存后热重载即时生效，不用重启。</div>
+          <div id="bmList" style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:6px"></div>
+          <div class="meta" id="mcpMeta" style="color:var(--text-2);font-size:12.5px"></div>
+        </div>
+        <div class="sec">
+          <h2>远程 MCP 服务器 <button class="btn sm" id="rmAdd" style="margin-left:auto">+ 新增</button></h2>
+          <div class="desc">远程 MCP（HTTP/SSE），保存后热重载。示例：DeepWiki https://mcp.deepwiki.com/mcp 。</div>
+          <div id="rmList"></div>
+        </div>
+      </div>
+
+      <!-- ⑦ 系统 -->
+      <div class="page" id="page-system">
+        <div class="sec">
+          <h2>系统信息</h2>
+          <div class="desc">桌面版本地运行状态。</div>
+          <div id="sysList"></div>
+        </div>
+      </div>
+
+      <!-- ⑧ 账号 -->
+      <div class="page" id="page-account">
+        <div class="sec">
+          <h2>管理员账号</h2>
+          <div class="desc">改用户名 / 改口令都需要验证原口令；改口令后换随机盐与默认值脱钩。</div>
+          <div class="field"><label>当前用户名</label><input id="acNameNow" disabled></div>
+          <div class="field"><label>新用户名（留空 = 不改）</label><input id="acName" maxlength="24"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="field"><label>原口令（必填）</label><input id="acOld" type="password"></div>
+            <div class="field"><label>新口令（留空 = 不改，至少 6 位）</label><input id="acNew" type="password"></div>
+          </div>
+          <button class="btn" id="acSave">保存</button>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- 新增/编辑弹层 -->
+<!-- 新增/编辑模型弹层 -->
 <div class="mask" id="pvMask">
   <div class="dlg">
     <h3 id="pvDlgTitle">新增模型</h3>
@@ -162,7 +302,7 @@
     <div class="field"><label>API Key</label><input id="fKey" placeholder="sk-…" autocomplete="off">
       <div class="hint" id="fKeyHint">留空表示不修改</div></div>
     <div class="field"><label>模型名</label><input id="fModel" placeholder="例如：Qwen3.6-35B-A3B-Vision"></div>
-    <div class="row2">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="field"><label>上下文上限（tokens）</label><input id="fMaxIn" type="number" min="0" placeholder="选填"></div>
       <div class="field"><label>单次输出上限</label><input id="fMaxOut" type="number" min="0" placeholder="选填"></div>
     </div>
@@ -170,19 +310,6 @@
     <div class="foot">
       <button class="btn ghost" id="pvCancel">取消</button>
       <button class="btn" id="pvSave">保存</button>
-    </div>
-  </div>
-</div>
-
-<!-- 改口令弹层 -->
-<div class="mask" id="pwMask">
-  <div class="dlg">
-    <h3>修改管理员口令</h3>
-    <div class="field"><label>原口令</label><input id="pwOld" type="password"></div>
-    <div class="field"><label>新口令（至少 6 位）</label><input id="pwNew" type="password"></div>
-    <div class="foot">
-      <button class="btn ghost" id="pwCancel">取消</button>
-      <button class="btn" id="pwSave">保存</button>
     </div>
   </div>
 </div>
