@@ -2,14 +2,13 @@
 
 > 给下一次迭代的你（或下一次会话的我）：本页登记已完成基线 + 未完成事项 + 接手要点。
 
-## ✅ 当前基线（v3.1.0，2026-10-14）
+## ✅ 当前基线（v3.2.0，2026-10-14）
 
 - **网页版**：index.html（UI 框架，红线不动）+ realchat.js（真实对话）+ storage.js（IndexedDB）+ tts.js（朗读）+ toolbox.js（菜单换血）+ compress.js（上下文压缩）+ config.js（gitignore）。
-- **桌面版**：`desktop/` Python 壳——main.py（pywebview 窗口 + **系统托盘** + uvicorn）+ server.py（OpenAI 兼容 SSE 代理 + 工具循环 + TTS + 导出）+ tools.py（注册表 + 扩展装载）+ tools_extra.py（11 新内建工具）+ mcp_client.py（通用 MCP 客户端）。**已交付桌面 EXE，双击即用。**
-- **工具总数 23**（17 内建 + 6 远程 MCP）。远程 MCP 实测接通：DeepWiki 3 工具 + Microsoft Learn 3 工具；ModelScope 魔搭 MCP 适配位已就绪（config.json mcpServers 填 URL 即生效）。
-- **上下文压缩**：compress.js 的 RC_compress（8 万字符预算 → 先折叠旧图片 → 再丢最旧，保留 system + 最近 6 条）。
-- **实测基线**：流式对话 / 思考折叠 / 多工具一轮齐发（时间+天气+系统信息）/ 多步工具链（list_directory 试错→DeepWiki 远程 MCP）/ 造真实 Word+Excel / 刷新持久化 / 托盘线程启动。
-- 本地运行：网页 `python -m http.server 8080`；桌面 `cd desktop && python -m uvicorn server:app --port 18765`。
+- **桌面版**：`desktop/` Python 壳——main.py（pywebview + **系统托盘** + uvicorn）+ server.py（OpenAI 兼容 SSE 代理 + 工具循环 + TTS + 导出）+ tools.py（注册表 + 扩展装载）+ tools_extra.py（11 内建）+ mcp_client.py（远程 MCP 客户端）+ **mcp_servers/（本地自建 MCP server 池）**。**已交付桌面 EXE，双击即用。**
+- **工具总数 37** = 17 内建 + 14 本地 MCP（web 3/files 3/office 3/dev 5）+ 6 远程 MCP（DeepWiki 3 + MS Learn 3）。config.json `builtinMcp` 控制本地 server 池开关。
+- **公众号抓取实测通过**（用户指定测试用例）：AI 自主调用 fetch_page_markdown 提取微信文章正文并准确概括。
+- **实测基线**：流式对话 / 思考折叠 / 多工具齐发 / 多步工具链 / Word+Excel 读写闭环 / 刷新持久化 / 托盘线程启动 / EXE 内 37 工具全装载。
 
 ## 🧭 关键架构事实（接手必读）
 
@@ -42,6 +41,8 @@
 3. **config.js / desktop/config.json 永不入库**（已 gitignore）。
 4. **realchat.js 覆盖点依赖**：sendMessage/renderModelMenu/newChat/CHATS/MODELS/currentModel 等全局名——重构 index.html JS 必须同步检查。
 5. **桌面 open_file 白名单**：仅限桌面与导出目录，勿放开到全盘。
-6. **⚠️ config.json 升级坑（v3.1 踩到）**：build_desktop 不覆盖已存在于桌面的 config.json——配置模板升级（如新增 mcpServers 字段）时必须手动把新模板覆盖到桌面，否则 EXE 读旧配置、新功能静默不生效。后续应改成「外部 config 缺字段时自动合并模板」。
-7. **远程 MCP 特性**：mcp_client.py 支持 http/sse/stdio 三传输，工具以 `ms_<服务器>_<工具>` 前缀合并；启动时后台装载，失败不影响其他工具。ModelScope 托管 URL 个人专属 24h 有效，过期需重新复制。托盘 UI 需用户双击 EXE 在交互会话验证（沙箱后台会话看不到托盘）。
-8. 版本节奏：每版更新版本号 + CHANGELOG + git tag（当前 v3.1.0）。
+6. **⚠️ config.json 升级坑（v3.1 踩到）**：build_desktop 不覆盖已存在于桌面的 config.json——配置模板升级（如新增 mcpServers/builtinMcp 字段）时必须手动把新模板覆盖到桌面，否则 EXE 读旧配置、新功能静默不生效。后续应改成「外部 config 缺字段时自动合并模板」。
+7. **⚠️ PyInstaller 动态导入坑（v3.2 踩到）**：`--collect-submodules` 只收子模块**不带父包**，importlib 动态 import 的包（mcp_servers）整个丢失且静默失败——必须显式 `--hidden-import mcp_servers`（父包）+ 各子模块。凡运行时 importlib.import_module 的包都要显式列出。
+8. **远程 MCP 特性**：mcp_client.py 支持 http/sse/stdio 三传输，工具以 `ms_<服务器>_<工具>` 前缀合并；启动时后台装载，失败不影响其他工具。ModelScope 托管 URL 个人专属 24h 有效，过期需重新复制。托盘 UI 需用户双击 EXE 在交互会话验证（沙箱后台会话看不到托盘）。
+9. **本地 MCP server 池**：mcp_servers/ 每文件一个标准 MCP server（同构描述符），builtin 进程内加载；加新 server = 新建模块 + config.json builtinMcp 加名 + build_desktop.py 加 hidden-import。web_search 用 Bing 主源（DuckDuckGo 境内不通）；Bing 中文查询会把高亮词堆在标题尾部，属服务端行为非 bug。
+10. 版本节奏：每版更新版本号 + CHANGELOG + git tag（当前 v3.2.0）。

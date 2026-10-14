@@ -1,8 +1,8 @@
 # ChatGPT UI —— ChatGPT 完美复刻（真实对话 · Python 桌面版）
 
-> 100% 还原 ChatGPT 官方界面观感，接入 OpenAI 兼容大模型 API **真实对话**；v3.0 起 Python 打包为 Windows 桌面 EXE，对话中 AI 可调用 **23 个本地/远程 MCP 工具**直接生成 Word / Excel / PPT、操作桌面文件、抓取网页、查天气、查文档。
+> 100% 还原 ChatGPT 官方界面观感，接入 OpenAI 兼容大模型 API **真实对话**；v3.2 起拥有 **37 个工具**（17 内建 + 14 本地自建 MCP + 6 远程 MCP），对话中 AI 可抓网页（含公众号）、生成/读取 Word/Excel/PPT、操作桌面文件、查天气、搜资料。
 
-![Version](https://img.shields.io/badge/version-v3.1.0-19c37d) ![License](https://img.shields.io/badge/license-MIT-blue) ![Tech](https://img.shields.io/badge/stack-HTML%20%2B%20JS%20%2B%20Python%20%E5%A3%B3-orange) ![MCP](https://img.shields.io/badge/MCP%20tools-23-blueviolet) ![Frontend%20deps](https://img.shields.io/badge/frontend%20deps-0-success)
+![Version](https://img.shields.io/badge/version-v3.2.0-19c37d) ![License](https://img.shields.io/badge/license-MIT-blue) ![Tech](https://img.shields.io/badge/stack-HTML%20%2B%20JS%20%2B%20Python%20%E5%A3%B3-orange) ![MCP](https://img.shields.io/badge/MCP%20tools-37-blueviolet) ![Frontend%20deps](https://img.shields.io/badge/frontend%20deps-0-success)
 
 ## ✨ 项目简介
 
@@ -25,12 +25,13 @@
 
 - 🖥️ **单文件 EXE**：PyInstaller 打包，双击即用，Python 壳（pywebview + 本地服务）
 - 🖥️ **系统托盘**：关闭窗口不退出、退到托盘常驻；托盘菜单「显示主窗口 / 退出程序」
-- 🧰 **23 个工具**（17 内建 + 6 远程 MCP），对话中 AI 自动调用：
-  - 办公产出：`create_word` / `create_excel` / `create_ppt`（落盘桌面 `chatgpt-ui-exports/`）
-  - 本机操作：`list_desktop_files` / `open_file` / `list_directory` / `read_text_file` / `write_text_file` / `take_screenshot`
-  - 系统信息：`system_info` / `current_time` / `get_weather` / `calculate` / `clipboard_read` / `clipboard_write` / `open_url`
-  - 联网抓取：`fetch_webpage`
-  - **远程 MCP**（实测接通）：DeepWiki（GitHub 仓库文档问答）+ Microsoft Learn（官方文档搜索）；工具调用过程在气泡内可视化
+- 🧰 **37 个工具**（17 内建 + 14 本地 MCP + 6 远程 MCP），对话中 AI 自动调用：
+  - 办公读写闭环：`create_word`/`create_excel`/`create_ppt` 生成 + `read_docx`/`read_xlsx`/`read_pptx` 读取（落盘桌面 `chatgpt-ui-exports/`）
+  - 网页抓取：`fetch_page_markdown`（**微信公众号/知乎/CSDN/掘金/简书/豆瓣/头条/B站**专用规则 → Markdown，实测公众号文章提取）、`web_search`（Bing）、`extract_links`
+  - 文件系统：`search_files`（递归搜名/内容）、`file_hash`、`tree_directory`、`list_desktop_files`、`open_file`
+  - 系统与生活：`system_info`/`current_time`/`get_weather`/`calculate`/`clipboard_read`/`clipboard_write`/`take_screenshot`/`open_url`
+  - 开发辅助：`json_format`/`base64_codec`/`url_codec`/`regex_test`/`timestamp_convert`
+  - **远程 MCP**（可选）：DeepWiki + Microsoft Learn；工具调用过程在气泡内可视化
 - 💾 **会话持久化**：IndexedDB 存储，刷新/重启不丢聊天记录
 - 🗜️ **上下文压缩**：超 8 万字符自动折叠较早图片与历史，始终保留系统提示与最近对话
 - 🔊 **朗读**：Edge TTS（联网）+ Windows SAPI 离线兜底
@@ -98,10 +99,11 @@ chatgpt-ui/
 ├── config.js           # 网页版真实配置（gitignore，本地自建）
 ├── desktop/            # v3.0 Python 桌面版
 │   ├── main.py         #   入口：pywebview 窗口 + 托盘 + uvicorn 本地服务
-│   ├── server.py       #   OpenAI 兼容 SSE 代理 + MCP 工具循环 + TTS + 导出
-│   ├── tools.py        #   本地工具注册表（v3.0 六件套 + 扩展装载入口）
+│   ├── server.py       #   OpenAI 兼容 SSE 代理 + 工具循环 + TTS + 导出
+│   ├── tools.py        #   本地工具注册表 + 扩展装载入口
 │   ├── tools_extra.py  #   v3.1 新增 11 个内建工具
 │   ├── mcp_client.py   #   通用 MCP 客户端（HTTP / SSE / stdio 三传输）
+│   ├── mcp_servers/    #   v3.2 本地自建 MCP server 池（web/files/office/dev）
 │   ├── build_desktop.py#   一键打包流水线（同步前端 → PyInstaller → 拷桌面）
 │   └── config.example.json
 ├── HANDOFF.md          # 交接清单：已完成基线 / 待办 / 红线
@@ -119,6 +121,7 @@ chatgpt-ui/
 | v2.0 | 接入大模型 API，真实对话 + 流式 + 图片理解 | ✅ 已完成 |
 | v3.0 | Python 桌面版 EXE + 本地 MCP 工具 + IndexedDB + Edge TTS | ✅ 已完成 |
 | v3.1 | 远程 MCP 客户端（DeepWiki/MS Learn 实测接通）+ 11 个新工具 + 系统托盘 + 上下文压缩 | ✅ 已完成 |
+| v3.2 | 本地自建 MCP server 池（web/files/office/dev 四服务器 14 工具）+ 公众号抓取实测 | ✅ 已完成 |
 | v3.x | 上下文压缩（RC_compress 钩子已预留）/ 多会话隔离 | 📋 规划中 |
 | v3.x | API 配置改从 Worker / 数据库动态获取 | 📋 规划中 |
 | v4.0 | 安全加固（服务端代理 Key、对外部署） | 📋 规划中 |

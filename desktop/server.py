@@ -65,11 +65,12 @@ MODEL = CFG.get('model') or 'Qwen3.6-35B-A3B-Vision'
 
 
 def _load_extensions_async():
-    """后台挂载扩展工具：11 个新内建（tools_extra）+ config.json mcpServers 远程 MCP。
-    远程连接需要数秒，不阻塞服务就绪；未连接成功也不影响对话与内建工具。"""
+    """后台挂载扩展工具：11 个新内建（tools_extra）+ 本地 MCP server 池（builtinMcp）
+    + config.json mcpServers 远程 MCP。远程连接需要数秒，不阻塞服务就绪。"""
     try:
         import tools as _tools
-        _tools.load_extensions(CFG.get('mcpServers') or [], log=lambda m: print('[mcp]', m))
+        _tools.load_extensions(CFG.get('mcpServers') or [], CFG.get('builtinMcp') or [],
+                               log=lambda m: print('[mcp]', m))
     except Exception as e:
         print('[mcp] 扩展装载异常：', e)
 

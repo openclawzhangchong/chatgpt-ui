@@ -61,6 +61,11 @@ def step_pyinstaller():
         '--collect-all', 'edge_tts',
         '--collect-all', 'docx',
         '--hidden-import', 'server', '--hidden-import', 'tools', '--hidden-import', 'appconfig',
+        '--hidden-import', 'tools_extra', '--hidden-import', 'mcp_client',
+        # 本地 MCP server 池是 importlib 动态导入，必须显式列出父包+子模块（collect-submodules 不带父包）
+        '--hidden-import', 'mcp_servers', '--hidden-import', 'mcp_servers.web',
+        '--hidden-import', 'mcp_servers.files', '--hidden-import', 'mcp_servers.office',
+        '--hidden-import', 'mcp_servers.dev',
         '--distpath', os.path.join(HERE, 'dist'),
         '--workpath', os.path.join(HERE, 'build'),
         '--specpath', HERE,

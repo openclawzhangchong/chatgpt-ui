@@ -264,9 +264,9 @@ def execute(name, args):
 REMOTE_STATUS = []  # [{name, status, server, tool_count}] 供 /api/tools 展示
 
 
-def load_extensions(mcp_conf_list=None, log=print):
-    """启动时挂载：① 11 个新内建工具（tools_extra）② config.json mcpServers 远程 MCP。
-    返回挂载的远程工具数。幂等保护：重复调用不会重复注册。"""
+def load_extensions(mcp_conf_list=None, builtin_names=None, log=print):
+    """启动时挂载：① 11 个新内建工具（tools_extra）② config.json mcpServers 远程 MCP
+    ③ config.json builtinMcp 本地自建 MCP server 池。幂等保护：重复调用不会重复注册。"""
     import tools_extra
     existing = {t['name'] for t in REGISTRY}
     added = 0
@@ -294,5 +294,21 @@ def load_extensions(mcp_conf_list=None, log=print):
                 remote_count += 1
         REMOTE_STATUS.append({'name': name, 'status': '已连接' if remote else '未连接',
                               'server': '', 'tool_count': len(cli_tools)})
-    log('扩展装载完成：新增内建 %d 个，远程 MCP 工具 %d 个，注册表共 %d 个' % (added, remote_count, len(REGISTRY)))
-    return remote_count
+    # 本地自建 MCP server 池（进程内加载）
+    builtin_count = 0
+    if builtin_names:
+        try:
+            from mcp_servers import load_builtin
+            btools, bstatus = load_builtin(builtin_names, log=log)
+        except Exception as e:
+            log('本地 MCP 池装载失败：%s' % str(e)[:300])
+            btools, bstatus = [], []
+        for t in btools:
+            if t['name'] not in {x['name'] for x in REGISTRY}:
+                REGISTRY.append({'name': t['name'], 'description': t['description'],
+                                 'inputSchema': t['inputSchema'], 'handler': t['handler'], 'remote': True})
+                builtin_count += 1
+        REMOTE_STATUS.extend(bstatus)
+    log('扩展装载完成：新增内建 %d 个，远程 MCP 工具 %d 个，本地 MCP 工具 %d 个，注册表共 %d 个'
+        % (added, remote_count, builtin_count, len(REGISTRY)))
+    return {'builtin': builtin_count, 'remote': remote_count}

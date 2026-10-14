@@ -9,6 +9,23 @@
 - LLM 摘要式上下文压缩（当前为确定性折叠版）
 - 设置弹窗语音 Tab 真实化（音色选择）
 
+## [3.2.0] - 2026-10-14
+
+**本地自建 MCP Server 池**：从「接别人的 MCP」升级为「自己起自己的」，新增 4 个本地 server 14 个工具，工具总数 23 → **37**。
+
+### Added
+- **本地 MCP server 池**（`desktop/mcp_servers/`，进程内加载，零子进程零打包风险），config.json `builtinMcp` 一行开关：
+  - **web**：`fetch_page_markdown`（网页→Markdown 智能正文提取，微信公众号/知乎/CSDN/掘金/简书/豆瓣/头条/B站专用规则+通用启发式，保留标题层级/列表/链接/图片/代码块）、`web_search`（Bing 主 + DuckDuckGo 备）、`extract_links`
+  - **files**：`search_files`（文件名/内容递归搜索）、`file_hash`（MD5/SHA1/SHA256）、`tree_directory`
+  - **office**：`read_docx` / `read_xlsx` / `read_pptx`（与 create_* 形成读写闭环）
+  - **dev**：`json_format` / `base64_codec` / `url_codec` / `regex_test` / `timestamp_convert`
+- 公众号文章抓取实测通过（用户指定测试用例）：AI 自主调用 fetch_page_markdown 提取正文并准确概括
+
+### Fixed
+- web_search 数据源：DuckDuckGo 境内不通 → Bing 主源（实测解析 10 条结果）
+- PyInstaller 打包：`collect-submodules` 不带父包导致动态 import 的 mcp_servers 整个丢失 → 显式 hidden-import 父包+子模块（已登记踩坑）
+- 本地 MCP 池装载增加防御：单个 server 失败不影响其他工具
+
 ## [3.1.0] - 2026-10-14
 
 **MCP 工具扩充 + 系统托盘 + 上下文压缩**：工具总数 6 → 23，新增托盘常驻与上下文自动折叠。
@@ -89,7 +106,8 @@
 - 移动端竖屏 / PC 横屏双布局，侧边栏抽屉式滑出
 - 单文件架构：HTML + CSS + JS 全内联，零依赖、零构建、零外部请求
 
-[Unreleased]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v3.1.0...HEAD
+[Unreleased]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v3.2.0...HEAD
+[3.2.0]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v2.0.0...v3.0.0
 [2.0.0]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v1.0.0...v2.0.0

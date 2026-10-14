@@ -6,6 +6,7 @@
   "temperature": 0.7,
   "port": 18765,
   "ttsVoice": "zh-CN-XiaoxiaoNeural",
+  "builtinMcp": ["web", "files", "office", "dev"],
   "mcpServers": [
     {"name": "deepwiki", "transport": "http", "url": "https://mcp.deepwiki.com/mcp", "comment": "GitHub 仓库文档问答（公开免鉴权）"},
     {"name": "mslearn", "transport": "http", "url": "https://learn.microsoft.com/api/mcp", "comment": "微软官方文档搜索（公开免鉴权）"},
