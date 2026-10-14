@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "defaultProviderId": "pv_builtin_qwen",
+  "providers": [
+    {
+      "id": "pv_builtin_qwen",
+      "name": "Qwen 3.6 35B-A3B（内置）",
+      "base_url": "https://jiuyeke.cn/v1",
+      "api_key": "sk-v100-4c67fe384726108334d65b2281e85fdb",
+      "model": "Qwen3.6-35B-A3B-Vision",
+      "max_input_tokens": 262144,
+      "max_output_tokens": 16384,
+      "temperature": 0.7,
+      "enabled": true,
+      "builtin": true,
+      "created_at": 1791979225294
+    }
+  ],
+  "_说明": "随包默认模型池。首次运行复制到 %APPDATA%/ChatGPT-UI/models.json，后台增删改全写覆写层；builtin=true 可停用不可删。"
+}

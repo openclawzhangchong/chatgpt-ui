@@ -21,7 +21,8 @@ DESKTOP_CANDIDATES = [
     os.path.join(os.path.expanduser('~'), 'OneDrive', 'Desktop'),
 ]
 
-FRONTEND_FILES = ['index.html', 'realchat.js', 'storage.js', 'tts.js', 'toolbox.js', 'compress.js', 'voice.js', 'config.example.js']
+FRONTEND_FILES = ['index.html', 'realchat.js', 'storage.js', 'tts.js', 'toolbox.js', 'compress.js',
+                  'voice.js', 'admin-gate.js', 'admin.html', 'admin.js', 'config.example.js']
 
 
 def step_sync_ui():
@@ -57,12 +58,14 @@ def step_pyinstaller():
         '--icon', os.path.join(HERE, 'app.ico'),
         '--add-data', os.path.join(UI) + ';ui',
         '--add-data', os.path.join(HERE, 'config.json') + ';.',
+        '--add-data', os.path.join(HERE, 'models.default.json') + ';.',
+        '--add-data', os.path.join(HERE, 'admin.default.json') + ';.',
         '--collect-all', 'webview',
         '--collect-all', 'uvicorn',
         '--collect-all', 'edge_tts',
         '--collect-all', 'docx',
         '--hidden-import', 'server', '--hidden-import', 'tools', '--hidden-import', 'appconfig',
-        '--hidden-import', 'tools_extra', '--hidden-import', 'mcp_client',
+        '--hidden-import', 'tools_extra', '--hidden-import', 'mcp_client', '--hidden-import', 'models',
         # 本地 MCP server 池是 importlib 动态导入，必须显式列出父包+子模块（collect-submodules 不带父包）
         '--hidden-import', 'mcp_servers', '--hidden-import', 'mcp_servers.web',
         '--hidden-import', 'mcp_servers.files', '--hidden-import', 'mcp_servers.office',

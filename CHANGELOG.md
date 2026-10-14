@@ -8,6 +8,27 @@
 ### 计划中
 - 语音输入真机验证（需麦克风环境）
 - 设置弹窗其余 Tab 真实化
+- 设置快照上云（Worker/D1，对齐 dog2027 数据模型已预留）
+
+## [3.4.0] - 2026-10-14
+
+**管理后台 + 模型池**：从「单模型写死」进化为「后台可管理的模型池」，新增 /admin 管理页与管理员登录体系，模型菜单真实化；音色从 4 个硬编码升级为微软全量 322 个分组下拉。
+
+### Added
+- **管理后台**（`/admin`，ui/admin.html + admin.js）：登录闸门（管理员用户名 + 口令）→ 模型池管理（新增/编辑/删除/启用停用/设为默认/连通测试/Key 打码）+ 修改口令 + 系统信息。视觉对齐前台，支持深浅色
+- **管理员鉴权体系**（models.py）：口令 PBKDF2-SHA256 20 万次迭代哈希存储（**只存哈希不存明文**，dog2027 v1.19.0 教训）；token HMAC-SHA256 签名、TTL 7 天；`/api/admin/*` 统一守卫，401/403 行为一致
+- **模型池两层存储**：随包 `models.default.json`（内置 Qwen 条目，可停用不可删）+ `%APPDATA%/ChatGPT-UI/models.json` 运行时覆写层（后台增删改全写这里，加模型不用重打包）；数据模型对齐 dog2027 providers 表，将来上 Worker/D1 无缝迁移
+- **前台管理员入口**（admin-gate.js）：右上角头像菜单按登录态显隐「管理员登录 / 管理后台」——未登录时入口零暴露；登录浮层 + token 与 /admin 页同源共享
+- **模型菜单真实化**：顶栏模型下拉改拉 `/api/models` 渲染真实池，选择持久化（localStorage RC_MODEL_ID），请求带条目 id；服务端不识别/停用 → 静默回落默认（用户看到的是悄悄换回默认，不是发不出去）
+- **音色全量化**：`/api/tts/voices` 改拉 `edge_tts.list_voices()` 微软全量 322 个，按「中文女声/中文男声/方言/多语言/其他」分组（小名人名映射：Xiaoxiao→晓晓），设置面板升级为分组下拉 +「▶ 试听」按钮（1.5s 节流 + 自动播放解锁，dog2027 同款纪律）；断网回落内置 4 个
+
+### Changed
+- server.py 聊天循环：上游配置从全局单 Provider 改为按请求 model 字段走模型池裁决；config.json 的 baseUrl/apiKey/model 降级为随包默认种子，老配置不瞎
+- build_desktop.py：FRONTEND_FILES 增 admin.html/admin.js/admin-gate.js；打包数据增 models.default.json + admin.default.json；hidden-import 增 models
+
+### Security
+- 管理员口令哈希 20 万次 PBKDF2；默认口令（18596950000）只以哈希形式存在于随包 admin.default.json，首次后台改口令后换随机盐
+- 模型 Key 只写不读：所有列表接口一律打码（sk-…末四位），编辑时留空 = 不改
 
 ## [3.3.0] - 2026-10-14
 

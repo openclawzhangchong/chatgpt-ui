@@ -1,0 +1,6 @@
+{
+  "name": "张翀",
+  "password_hash": "pbkdf2_sha256$200000$72632d61646d696e2d64656661756c742d73616c742d7631$ba49b765307770739c7b644ba5818e4f87b0a4d7414e59180eddf6a69116ce52",
+  "created_at": 1791979225291,
+  "_说明": "随包默认管理员凭据。首次运行复制到 %APPDATA%/ChatGPT-UI/admin.json；改口令后换随机盐。禁止存明文。"
+}

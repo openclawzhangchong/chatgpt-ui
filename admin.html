@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理后台 · ChatGPT</title>
+<style>
+  :root {
+    --bg: #ffffff; --bg-2: #f7f7f8; --bg-hover: #ececee;
+    --card: #ffffff; --border: #e5e5e7; --text: #0d0d0e; --text-2: #6e6e76; --text-3: #9a9aa2;
+    --accent: #19c37d; --accent-2: #15a86c; --danger: #e5484d; --warn: #f2a33c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #17171a; --bg-2: #1f1f23; --bg-hover: #2a2a2f;
+      --card: #1f1f23; --border: #33333a; --text: #f2f2f3; --text-2: #a8a8b0; --text-3: #77777f; }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; }
+  button { font-family: inherit; cursor: pointer; }
+  code { font-family: Consolas, "Courier New", monospace; font-size: 12px;
+    background: var(--bg-2); padding: 1px 6px; border-radius: 4px; }
+
+  /* —— 登录闸门 —— */
+  #gate { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: var(--bg); z-index: 10; }
+  .gate-card { width: 340px; padding: 32px; }
+  .gate-logo { width: 44px; height: 44px; border-radius: 12px; background: var(--accent);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 700; margin-bottom: 18px; }
+  .gate-card h1 { font-size: 20px; margin-bottom: 4px; }
+  .gate-card .sub { color: var(--text-2); font-size: 13px; margin-bottom: 22px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 13px; color: var(--text-2); margin-bottom: 5px; }
+  .field input, .field select { width: 100%; padding: 9px 12px; border: 1px solid var(--border);
+    border-radius: 8px; background: var(--bg); color: var(--text); font-size: 14px; outline: none; }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .btn { padding: 9px 16px; border: none; border-radius: 8px; font-size: 14px;
+    background: var(--accent); color: #fff; }
+  .btn:hover { background: var(--accent-2); }
+  .btn.block { width: 100%; }
+  .btn.ghost { background: transparent; color: var(--text-2); border: 1px solid var(--border); }
+  .btn.ghost:hover { background: var(--bg-hover); color: var(--text); }
+  .btn.danger { background: var(--danger); }
+  .btn.sm { padding: 5px 11px; font-size: 13px; border-radius: 7px; }
+  .btn:disabled { opacity: .55; cursor: not-allowed; }
+  .gate-err { color: var(--danger); font-size: 13px; min-height: 20px; margin-bottom: 10px; }
+
+  /* —— 后台主体 —— */
+  #app { display: none; max-width: 980px; margin: 0 auto; padding: 28px 22px 60px; }
+  #app.show { display: block; }
+  .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 26px; }
+  .top .t { font-size: 19px; font-weight: 700; }
+  .top .t span { font-size: 13px; color: var(--text-3); font-weight: 400; margin-left: 10px; }
+  .top .ops { display: flex; gap: 8px; }
+  .sec { background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px; margin-bottom: 20px; }
+  .sec h2 { font-size: 15px; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; }
+  .sec .desc { color: var(--text-2); font-size: 13px; margin-bottom: 16px; }
+
+  .card { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px;
+    border: 1px solid var(--border); border-radius: 11px; padding: 14px 16px; margin-bottom: 12px; }
+  .card.off { opacity: .62; }
+  .card .nm { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card .meta { color: var(--text-2); font-size: 12.5px; margin-top: 3px; word-break: break-all; }
+  .card .meta code { font-size: 11.5px; }
+  .card .ops { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+  .badge { font-size: 11px; padding: 1px 8px; border-radius: 20px; font-weight: 500; }
+  .badge.builtin { background: rgba(93,143,214,.15); color: #5d8fd6; }
+  .badge.on { background: rgba(25,195,125,.14); color: var(--accent-2); }
+  .badge.off { background: rgba(229,72,77,.13); color: var(--danger); }
+  .badge.def { background: rgba(242,163,60,.16); color: #c47f1f; }
+  .empty { color: var(--text-3); font-size: 13px; text-align: center; padding: 26px 0; }
+
+  /* —— 弹层 —— */
+  .mask { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none;
+    align-items: center; justify-content: center; z-index: 20; padding: 20px; }
+  .mask.open { display: flex; }
+  .dlg { background: var(--card); border-radius: 14px; padding: 22px; width: 440px;
+    max-width: 100%; max-height: 88vh; overflow: auto; }
+  .dlg h3 { font-size: 16px; margin-bottom: 14px; }
+  .dlg .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .dlg .foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+  .hint { font-size: 12px; color: var(--text-3); margin-top: 3px; }
+
+  #toast { position: fixed; left: 50%; bottom: 36px; transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: var(--bg); padding: 9px 18px; border-radius: 9px;
+    font-size: 13px; opacity: 0; pointer-events: none; transition: all .25s; z-index: 50; }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- 登录闸门 -->
+<div id="gate">
+  <form class="gate-card" id="gateCard">
+    <div class="gate-logo">A</div>
+    <h1>管理后台</h1>
+    <div class="sub">ChatGPT UI 桌面版 · 模型池与系统配置</div>
+    <div class="gate-err" id="gateErr"></div>
+    <div class="field"><label>管理员用户名</label><input id="admName" autocomplete="username" required></div>
+    <div class="field"><label>口令</label><input id="admPass" type="password" autocomplete="current-password" required></div>
+    <button class="btn block" id="admSubmit" type="submit">登 录</button>
+    <div class="hint" style="text-align:center;margin-top:14px"><a href="/" style="color:var(--text-3)">← 返回前台</a></div>
+  </form>
+</div>
+
+<!-- 后台主体 -->
+<div id="app">
+  <div class="top">
+    <div class="t">管理后台<span id="admLabel"></span></div>
+    <div class="ops">
+      <a href="/"><button class="btn ghost sm">返回前台</button></a>
+      <button class="btn ghost sm" id="btnPw">修改口令</button>
+      <button class="btn ghost sm" id="btnOut">退出登录</button>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>模型池
+      <button class="btn sm" id="btnAdd" style="margin-left:auto">+ 新增模型</button>
+    </h2>
+    <div class="desc">前台模型菜单只读这里启用的条目；「默认」是每次打开时的选中项。内置模型随安装包分发，可停用不可删除。</div>
+    <div id="pvList"></div>
+  </div>
+
+  <div class="sec">
+    <h2>系统</h2>
+    <div class="desc">桌面版本地信息。</div>
+    <div class="card" style="align-items:center">
+      <div>
+        <div class="nm">版本</div>
+        <div class="meta" id="sysVer">ChatGPT UI 桌面版 v3.4.0</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 新增/编辑弹层 -->
+<div class="mask" id="pvMask">
+  <div class="dlg">
+    <h3 id="pvDlgTitle">新增模型</h3>
+    <div class="field"><label>名称</label><input id="fName" placeholder="例如：Qwen 3.6 35B（学校）"></div>
+    <div class="field"><label>Base URL</label><input id="fBase" placeholder="https://api.example.com/v1">
+      <div class="hint">OpenAI 兼容接口地址，末尾不带 /</div></div>
+    <div class="field"><label>API Key</label><input id="fKey" placeholder="sk-…" autocomplete="off">
+      <div class="hint" id="fKeyHint">留空表示不修改</div></div>
+    <div class="field"><label>模型名</label><input id="fModel" placeholder="例如：Qwen3.6-35B-A3B-Vision"></div>
+    <div class="row2">
+      <div class="field"><label>上下文上限（tokens）</label><input id="fMaxIn" type="number" min="0" placeholder="选填"></div>
+      <div class="field"><label>单次输出上限</label><input id="fMaxOut" type="number" min="0" placeholder="选填"></div>
+    </div>
+    <div class="field"><label>温度（0~2）</label><input id="fTemp" type="number" min="0" max="2" step="0.1" placeholder="0.7"></div>
+    <div class="foot">
+      <button class="btn ghost" id="pvCancel">取消</button>
+      <button class="btn" id="pvSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 改口令弹层 -->
+<div class="mask" id="pwMask">
+  <div class="dlg">
+    <h3>修改管理员口令</h3>
+    <div class="field"><label>原口令</label><input id="pwOld" type="password"></div>
+    <div class="field"><label>新口令（至少 6 位）</label><input id="pwNew" type="password"></div>
+    <div class="foot">
+      <button class="btn ghost" id="pwCancel">取消</button>
+      <button class="btn" id="pwSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="admin.js"></script>
+</body>
+</html>

@@ -208,7 +208,7 @@
         'Authorization': 'Bearer ' + CFG.apiKey
       },
       body: JSON.stringify({
-        model: CFG.model,
+        model: currentModel || CFG.model,  // v3.4.0：传模型池条目 id，服务端按池选上游；不识别则回落默认
         messages: apiMsgs,
         stream: true,
         max_tokens: MAX_TOKENS,
@@ -449,17 +449,50 @@
     if (e.key === 'Enter' && e.shiftKey && e.target && e.target.tagName === 'TEXTAREA') e.stopPropagation();
   }, true);
 
-  /* ================= 模型菜单真实化 ================= */
-  // TODO(Worker): 模型清单将来可从 Worker/数据库下发，当前以真实接入的 Qwen 模型为主项
+  /* ================= 模型菜单真实化（v3.4.0：拉模型池） ================= */
+  // 模型清单来自本地服务 /api/models（管理后台可增删改），选择持久化 localStorage。
+  // 纯网页模式（无本地服务）下拉不到时，退回 config.js 的单模型，行为与旧版一致。
   (function realignModels() {
-    const real = { id: CFG_OK ? CFG.model : 'qwen3.6', name: 'Qwen 3.6 35B-A3B', desc: '视觉多模态 · 262K 上下文 · 已接入真实 API', real: true };
-    const demo = []; // v3.0: 假 ChatGPT 模型项已移除，菜单只保留真实接入的模型
-    MODELS.length = 0;
-    MODELS.push(real);
-    demo.forEach(function (d) { MODELS.push(d); });
-    currentModel = MODELS[0].id;
-    const badge = $('modelBadge');
-    if (badge) badge.textContent = 'Qwen 3.6';
+    function shortName(name) {
+      return String(name || '').replace(/（.*?）/, '').slice(0, 12) || '模型';
+    }
+    function applyServerModels(list, activeId) {
+      MODELS.length = 0;
+      (list || []).forEach(function (p) {
+        MODELS.push({ id: p.id, name: p.name, desc: (p.model || '') + ' · ' + (p.base_url || ''), real: true });
+      });
+      var saved = localStorage.getItem('RC_MODEL_ID');
+      if (saved && MODELS.some(function (m) { return m.id === saved; })) {
+        currentModel = saved;
+      } else if (activeId && MODELS.some(function (m) { return m.id === activeId; })) {
+        currentModel = activeId;
+      } else if (MODELS.length) {
+        currentModel = MODELS[0].id;
+      }
+      if (!MODELS.length) {  // 池空：保留一个占位真实项，避免菜单空白
+        MODELS.push({ id: CFG_OK ? CFG.model : 'qwen3.6', name: 'Qwen 3.6 35B-A3B',
+                      desc: '未配置模型池 · 请到管理后台添加', real: true });
+        currentModel = MODELS[0].id;
+      }
+      var badge = $('modelBadge');
+      var cur = MODELS.find(function (m) { return m.id === currentModel; });
+      if (badge && cur) badge.textContent = shortName(cur.name);
+      if (window.renderModelMenu) window.renderModelMenu();
+    }
+    if (window.__RC_DESKTOP__ !== false) {
+      fetch('/api/models').then(function (r) { return r.json(); }).then(function (d) {
+        applyServerModels(d.models, d.activeId);
+      }).catch(function () {
+        // 纯网页模式：单真实项兜底
+        MODELS.length = 0;
+        MODELS.push({ id: CFG_OK ? CFG.model : 'qwen3.6', name: 'Qwen 3.6 35B-A3B',
+                      desc: '视觉多模态 · 262K 上下文', real: true });
+        currentModel = MODELS[0].id;
+        var badge = $('modelBadge');
+        if (badge) badge.textContent = 'Qwen 3.6';
+        if (window.renderModelMenu) window.renderModelMenu();
+      });
+    }
   })();
 
   window.renderModelMenu = function () {
@@ -473,9 +506,10 @@
     menu.querySelectorAll('.mm-item').forEach(function (item) {
       item.onclick = function () {
         currentModel = item.dataset.id;
+        localStorage.setItem('RC_MODEL_ID', currentModel);  // 选择持久化，刷新/重启保持
         const m = MODELS.find(function (x) { return x.id === currentModel; });
-        $('modelBadge').textContent = m.real ? 'Qwen 3.6' : m.name.replace('ChatGPT ', '');
-        if (!m.real) toast('演示项：请求实际仍由 Qwen 模型处理');
+        $('modelBadge').textContent = m ? String(m.name).replace(/（.*?）/, '').slice(0, 12) : '模型';
+        if (!m.real) toast('演示项：请求实际仍由默认模型处理');
         closeMenus();
       };
     });
