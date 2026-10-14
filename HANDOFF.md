@@ -2,14 +2,15 @@
 
 > 给下一次迭代的你（或下一次会话的我）：本页登记已完成基线 + 未完成事项 + 接手要点。
 
-## ✅ 当前基线（v3.4.0，2026-10-14）
+## ✅ 当前基线（v3.4.1，2026-10-14）
 
 - **网页版**：index.html（UI 框架，红线不动）+ realchat.js（真实对话 + 模型菜单真实化）+ storage.js（IndexedDB）+ tts.js（朗读）+ toolbox.js（菜单换血）+ compress.js（上下文压缩）+ voice.js（语音闭环 + 音色分组下拉试听）+ admin-gate.js（管理员入口）+ admin.html/admin.js（/admin 后台页）+ config.js（gitignore）。
 - **桌面版**：`desktop/` Python 壳——main.py（pywebview + **系统托盘** + uvicorn）+ server.py（OpenAI 兼容 SSE 代理 + 工具循环 + TTS + 导出 + 配置诊断日志 + **/api/models + /api/admin/* + /admin 路由**）+ tools.py（注册表 + 扩展装载）+ tools_extra.py（11 内建）+ mcp_client.py（远程 MCP 客户端）+ mcp_servers/（本地自建 MCP server 池：web/files/office/dev/pdf/media）+ **models.py（模型池 + 管理员鉴权，v3.4.0 新增）**。**已交付桌面 EXE（含自定义图标），双击即用。**
 - **工具总数 41** = 17 内建 + 18 本地 MCP（web 3/files 3/office 3/dev 5/pdf 2/media 2）+ 6 远程 MCP（DeepWiki 3 + MS Learn 3）。
 - **管理后台（v3.4.0）**：`/admin` 页，管理员口令登录（PBKDF2 20 万轮哈希，默认口令 18596950000，只存哈希）；模型池增删改/启停/默认/测试；内置 Qwen 条目带「内置」徽章可停用不可删；Key 全程打码；token TTL 7 天。
 - **模型池两层存储**：随包 `desktop/models.default.json` + `%APPDATA%/ChatGPT-UI/models.json` 覆写层；管理员凭据同理（`admin.default.json` → `%APPDATA%/ChatGPT-UI/admin.json`）。换机器/重装 = 回到随包默认，覆写层不丢（除非删 %APPDATA%）。
-- **实测基线**：流式对话 / 思考折叠 / 多工具齐发 / 多步工具链 / Word+Excel+PPT 读写闭环 / PDF 读取 / 二维码生成 / 产物打开按钮 / 刷新持久化 / 托盘 / EXE 41 工具全装载 / **管理员登录(错密拒+对密过+无 token 401) / 模型 CRUD / 停用后设默认被拒 / 删内置 403 / 假 model id 静默回落 / 聊天带 model id 路由 / 音色 322 个分组**。
+- **音色（v3.4.1）**：微软全量 322 个分组下拉（中文女声/男声/方言/多语言/其他，小名映射）+ 前台设置面板试听 + **后台「朗读设置」默认音色**（settings.json）；优先级 = 前台手动选 > 后台默认 > config 兜底；断网回落 SAPI。
+- **实测基线**：流式对话 / 思考折叠 / 多工具齐发 / 多步工具链 / Word+Excel+PPT 读写闭环 / PDF 读取 / 二维码生成 / 产物打开按钮 / 刷新持久化 / 托盘 / EXE 41 工具全装载 / **管理员登录(错密拒+对密过+无 token 401) / 模型 CRUD / 停用后设默认被拒 / 删内置 403 / 假 model id 静默回落 / 聊天带 model id 路由 / 音色 322 个分组 / 后台默认音色读写+TTS 链路**。
 
 ## 🧭 关键架构事实（接手必读）
 
@@ -20,6 +21,8 @@
 5. **edge-tts 已知问题**：微软 WSS 握手 403（GEC 令牌/线路策略），已实现 SAPI 离线兜底；edge-tts 7.2.8 若将来修复可自动恢复高音质。
 6. **重新生成/朗读拦截**都挂在 document 捕获层（事件在目标元素时 capture 监听器按注册顺序执行，挂 #messages 上拦不住原演示监听器）。
 7. **打包**：`desktop/build_desktop.py` 三步（同步前端到 ui/ → PyInstaller --onefile --windowed → 拷 EXE+config.json 到桌面）。EXE 旁 config.json 优先于内置配置，改 key 不用重打包。
+8. **v3.4.0 安全默认值**：管理员默认口令 18596950000（仅以 PBKDF2 20 万轮哈希形式存在于随包 `admin.default.json`，仓库 public 也可接受）。**首次登录后请立即在后台「修改口令」**——换随机盐、与默认值彻底脱钩。模型 Key 同理：只写不读、接口一律打码。
+9. **v3.4.0 路由注册顺序**：`/admin` 与 `/api/*` 必须注册在静态 catch-all `/{fname:path}` **之前**，否则会被劫持成 404（v3.2 踩过的坑同款位置）。
 
 ## 📋 未完成 / 后续方向（按优先级）
 

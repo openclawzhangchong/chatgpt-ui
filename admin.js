@@ -102,7 +102,64 @@
     }).catch(function () { signOut(); });
   }
 
-  function loadAll() { loadModels(); }
+  function loadAll() { loadModels(); loadVoice(); }
+
+  /* —— 朗读设置（v3.4.1：后台默认音色） —— */
+  var voiceCache = [];   // [{id,name,group}]
+  function loadVoice() {
+    Promise.all([api('settings'), fetch('/api/tts/voices').then(function (r) { return r.json(); })])
+      .then(function (rs) {
+        var settings = rs[0] || {};
+        voiceCache = rs[1].voices || [];
+        var sel = $('#vSel');
+        var groups = {};
+        voiceCache.forEach(function (v) { (groups[v.group || '其他'] = groups[v.group || '其他'] || []).push(v); });
+        sel.innerHTML = '';
+        Object.keys(groups).forEach(function (g) {
+          var og = document.createElement('optgroup'); og.label = g;
+          groups[g].forEach(function (v) {
+            var o = document.createElement('option');
+            o.value = v.id; o.textContent = v.name;
+            og.appendChild(o);
+          });
+          sel.appendChild(og);
+        });
+        var cur = settings.ttsVoice;
+        if (!voiceCache.some(function (v) { return v.id === cur; })) cur = voiceCache.length ? voiceCache[0].id : cur;
+        sel.value = cur;
+        var found = voiceCache.filter(function (v) { return v.id === cur; })[0];
+        $('#voiceMeta').textContent = found ? (found.group + ' · ' + found.id) : (cur || '未设置');
+      })
+      .catch(function (e) { $('#voiceMeta').textContent = '加载失败：' + e.message; });
+  }
+  $('#vSave').addEventListener('click', function () {
+    var v = $('#vSel').value;
+    api('settings', { method: 'POST', body: { ttsVoice: v } }).then(function () {
+      toast('默认音色已保存：' + (v || ''));
+    }).catch(function (e) { toast(e.message); });
+  });
+  var tryAudio = null, tryCtrl = null;
+  $('#vTry').addEventListener('click', function () {
+    if (tryCtrl) { tryCtrl.abort(); tryCtrl = null; return; }  // 再点一次 = 停止
+    tryCtrl = new AbortController();
+    var v = $('#vSel').value;
+    $('#voiceMeta').textContent = '试听中…';
+    fetch('/api/tts?text=' + encodeURIComponent('你好，这是后台默认音色的试听效果。')
+      + '&voice=' + encodeURIComponent(v), { signal: tryCtrl.signal })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+      .then(function (blob) {
+        if (!tryAudio) tryAudio = new Audio();
+        tryAudio.src = URL.createObjectURL(blob);
+        tryAudio.onended = function () { tryCtrl = null; URL.revokeObjectURL(tryAudio.src); loadVoice(); };
+        tryAudio.onerror = function () { tryCtrl = null; loadVoice(); };
+        return tryAudio.play();
+      })
+      .catch(function (err) {
+        tryCtrl = null; loadVoice();
+        if (err && err.name === 'AbortError') return;
+        toast('试听失败：' + (err.message || err));
+      });
+  });
 
   /* —— 模型池 —— */
   function loadModels() {

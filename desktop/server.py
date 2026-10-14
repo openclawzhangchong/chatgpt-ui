@@ -418,10 +418,13 @@ async def api_tts(text: str, voice: str = None):
     text = (text or '').strip()[:5000]
     if not text:
         return Response('text required', status_code=400)
+    # 音色优先级：请求显式指定 > 后台默认音色（v3.4.1）> config.json 兜底。
+    # 前端朗读/试听总是带 localStorage 里选的音色；没选过就吃到后台默认。
+    use_voice = (voice or '').strip() or models.load_settings().get('ttsVoice') or TTS_VOICE
     # 优先 Edge TTS（联网、音质好）；被微软服务端拒绝/断网时降级 Windows SAPI（离线）
     try:
         import edge_tts
-        communicate = edge_tts.Communicate(text, voice or TTS_VOICE)
+        communicate = edge_tts.Communicate(text, use_voice)
         buf = bytearray()
         async for chunk in communicate.stream():
             if chunk['type'] == 'audio':
@@ -563,6 +566,29 @@ async def admin_test_model(pid: str, request: Request):
     if err:
         return err
     return models.test_provider(pid)
+
+
+@app.get('/api/admin/settings')
+async def admin_get_settings(request: Request):
+    claims, err = _admin_gate(request)
+    if err:
+        return err
+    return models.load_settings()
+
+
+@app.post('/api/admin/settings')
+async def admin_save_settings(request: Request):
+    claims, err = _admin_gate(request)
+    if err:
+        return err
+    b = await _json_body(request)
+    data = models.load_settings()
+    # 只收认得的键，别当自由透传口（全站纪律同款）
+    v = b.get('ttsVoice')
+    if isinstance(v, str) and v:
+        data['ttsVoice'] = v[:80]
+    models.save_settings(data)
+    return {'ok': True, 'settings': data}
 
 
 @app.post('/api/admin/password')

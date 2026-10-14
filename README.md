@@ -2,7 +2,7 @@
 
 > 100% 还原 ChatGPT 官方界面观感，接入 OpenAI 兼容大模型 API **真实对话**；v3.4 起拥有 **41 个工具**（17 内建 + 18 本地自建 MCP + 6 远程 MCP）+ **管理后台**（/admin 模型池管理，管理员口令登录），对话中 AI 可抓网页（含公众号）、生成/读取 Word/Excel/PPT/PDF、二维码、操作桌面文件、查天气、搜资料，支持语音听说闭环与微软全量音色选择。
 
-![Version](https://img.shields.io/badge/version-v3.4.0-19c37d) ![License](https://img.shields.io/badge/license-MIT-blue) ![Tech](https://img.shields.io/badge/stack-HTML%20%2B%20JS%20%2B%20Python%20%E5%A3%B3-orange) ![MCP](https://img.shields.io/badge/MCP%20tools-41-blueviolet) ![Frontend%20deps](https://img.shields.io/badge/frontend%20deps-0-success)
+![Version](https://img.shields.io/badge/version-v3.4.1-19c37d) ![License](https://img.shields.io/badge/license-MIT-blue) ![Tech](https://img.shields.io/badge/stack-HTML%20%2B%20JS%20%2B%20Python%20%E5%A3%B3-orange) ![MCP](https://img.shields.io/badge/MCP%20tools-41-blueviolet) ![Frontend%20deps](https://img.shields.io/badge/frontend%20deps-0-success)
 
 ## ✨ 项目简介
 

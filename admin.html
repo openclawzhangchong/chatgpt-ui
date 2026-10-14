@@ -125,6 +125,22 @@
   </div>
 
   <div class="sec">
+    <h2>朗读设置</h2>
+    <div class="desc">前台没有手动选过音色时，朗读使用这里的默认音色；设置面板里手动选择过的以用户选择优先。</div>
+    <div class="card" style="align-items:center;gap:12px">
+      <div style="min-width:0;flex:1">
+        <div class="nm">默认音色</div>
+        <div class="meta" id="voiceMeta">加载中…</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="vSel" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;max-width:230px"></select>
+        <button class="btn ghost sm" id="vTry">▶ 试听</button>
+        <button class="btn sm" id="vSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
     <h2>系统</h2>
     <div class="desc">桌面版本地信息。</div>
     <div class="card" style="align-items:center">

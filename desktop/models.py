@@ -25,9 +25,11 @@ import threading
 APP_DIR = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'ChatGPT-UI')
 RUNTIME_MODELS = os.path.join(APP_DIR, 'models.json')
 RUNTIME_ADMIN = os.path.join(APP_DIR, 'admin.json')
+RUNTIME_SETTINGS = os.path.join(APP_DIR, 'settings.json')
 PBKDF2_ROUNDS = 200_000
 TOKEN_TTL_MS = 7 * 86_400_000
 ADMIN_NAME_DEFAULT = '张翀'
+TTS_VOICE_DEFAULT = 'zh-CN-XiaoxiaoNeural'
 
 _lock = threading.RLock()
 _cache = {'models': None, 'admin': None}
@@ -352,6 +354,28 @@ def verify_token(token):
 def token_from_request(request):
     h = request.headers.get('authorization') or ''
     return h[7:] if h.startswith('Bearer ') else ''
+
+
+# ---------- 全局设置（v3.4.1：后台默认音色等，轻量键值本地库） ----------
+# 现阶段的「本地数据库」就是这组 JSON 文件：models.json / admin.json / settings.json，
+# 增删改查全在 Python 侧完成，原子写入防坏档。将来要多设备同步时，把这三个文件的
+# 读写函数换成 Worker/D1 调用即可，上层 API 零改动。
+
+def load_settings():
+    with _lock:
+        data = _read_json(RUNTIME_SETTINGS)
+        if not isinstance(data, dict):
+            # 种子：随包 config.json 的 ttsVoice（老配置平滑迁移，用户已有选择不丢）
+            cfg = _read_json(os.path.join(_bundled_dir(), 'config.json')) or {}
+            data = {'ttsVoice': cfg.get('ttsVoice') or TTS_VOICE_DEFAULT}
+            _write_json(RUNTIME_SETTINGS, data)
+        data.setdefault('ttsVoice', TTS_VOICE_DEFAULT)
+        return data
+
+
+def save_settings(data):
+    with _lock:
+        _write_json(RUNTIME_SETTINGS, data)
 
 
 # ---------- 连通性测试（真发一条 1-token 请求） ----------
