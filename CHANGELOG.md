@@ -6,8 +6,25 @@
 ## [Unreleased]
 
 ### 计划中
-- LLM 摘要式上下文压缩（当前为确定性折叠版）
-- 设置弹窗语音 Tab 真实化（音色选择）
+- 语音输入真机验证（需麦克风环境）
+- 设置弹窗其余 Tab 真实化
+
+## [3.3.0] - 2026-10-14
+
+**HANDOFF 候选清零轮**：产物预览卡片 + PDF/媒体工具 + 语音闭环 + LLM 摘要压缩 + EXE 图标，工具总数 37 → **41**。
+
+### Added
+- **产物预览卡片**：AI 生成 Word/Excel/PPT/PDF/二维码后，工具芯片内直接显示文件名 +「📂 打开」按钮（点击经 /api/tool open_file 用系统默认程序打开，实测 WPS 唤起成功）
+- **本地 MCP server 池扩充**：`pdf`（pdf_read 按页提取 / pdf_info 元信息目录）+ `media`（qr_generate 二维码 / image_info 图片信息 EXIF），本地 MCP 工具 14 → 18
+- **语音闭环**（voice.js）：① 设置面板「语音」Tab 音色 chips 真实化（Edge TTS 四音色，选择持久化）② mic 按钮接 Web Speech API 中文语音识别——聆听覆盖层实时显示识别文本，说完自动填入并发送，AI 回复完成后自动朗读
+- **LLM 摘要式上下文压缩**（compress.js RC_compressAsync）：触发折叠时把被裁历史发给模型生成 200 字摘要替换占位提示，被裁信息以摘要形式保留
+- **EXE 自定义图标**（绿色 A 标，与托盘同款，多尺寸 ico）
+- 会话记录 `owner` 字段落地（多用户隔离预留）
+
+### Fixed
+- 工具循环轮次上限 6 → 10（复杂多步任务不再被掐断）
+- server 配置诊断日志（config 来源 + builtinMcp/mcpServers 数量写入 %TEMP%/ChatGPT-UI.log，windowed 下排查配置问题的唯一入口）
+- 排查并清除僵尸进程占用端口导致新 EXE 工具加载异常的问题（实测 41 工具全装载）
 
 ## [3.2.0] - 2026-10-14
 
@@ -106,7 +123,8 @@
 - 移动端竖屏 / PC 横屏双布局，侧边栏抽屉式滑出
 - 单文件架构：HTML + CSS + JS 全内联，零依赖、零构建、零外部请求
 
-[Unreleased]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v3.2.0...HEAD
+[Unreleased]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v3.3.0...HEAD
+[3.3.0]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v3.2.0...v3.3.0
 [3.2.0]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/openclawzhangchong/chatgpt-ui/compare/v2.0.0...v3.0.0

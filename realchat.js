@@ -42,6 +42,9 @@
   .rc-tool .t-args { color:var(--text-tertiary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:420px; }
   .rc-tool .t-ok { color:var(--accent); }
   .rc-tool .t-fail { color:var(--danger); }
+  .rc-tool .t-open { margin-left:auto; flex-shrink:0; font-size:12px; padding:2px 10px; border-radius:6px;
+    border:1px solid var(--border); background:var(--bg-main); color:var(--text-primary); cursor:pointer; }
+  .rc-tool .t-open:hover { background:var(--bg-hover); }
   .rc-user-img { max-width:180px; max-height:180px; border-radius:8px; display:block; margin-top:8px; border:1px solid var(--border); }
   .mm-demo { font-size:11px; color:var(--text-tertiary); border:1px solid var(--border); border-radius:4px;
     padding:0 4px; margin-left:6px; vertical-align:1px; }
@@ -286,7 +289,7 @@
       reasoning: '',
       answer: '',
       started: false,
-      addTool: function (phase, name, tail) {
+      addTool: function (phase, name, tail, path) {
         let chip = this.toolsEl.querySelector('.rc-tool[data-name="' + name + '"]:last-of-type');
         if (phase === 'call' || !chip) {
           chip = document.createElement('div');
@@ -296,7 +299,27 @@
           this.toolsEl.appendChild(chip);
         }
         if (phase === 'call') chip.querySelector('.t-args').textContent = tail || '';
-        else chip.querySelector('.t-state').innerHTML = tail === '完成' ? '<span class="t-ok">✓ 完成</span>' : '<span class="t-fail">' + esc(tail || '失败') + '</span>';
+        else {
+          const st = chip.querySelector('.t-state');
+          st.innerHTML = tail === '完成' ? '<span class="t-ok">✓ 完成</span>' : '<span class="t-fail">' + esc(tail || '失败') + '</span>';
+          // 产物卡片：工具生成文件后，气泡内直接给「打开」按钮
+          if (path && tail === '完成' && !chip.querySelector('.t-open')) {
+            const fname = String(path).split(/[\\/]/).pop();
+            st.insertAdjacentHTML('beforeend', ' · ' + esc(fname));
+            const btn = document.createElement('button');
+            btn.className = 't-open';
+            btn.textContent = '📂 打开';
+            btn.title = path;
+            btn.onclick = function () {
+              fetch('/api/tool', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: 'open_file', args: { filename: fname } }) })
+                .then(function (r) { return r.json(); })
+                .then(function (d) { toast(d.ok ? '已打开：' + fname : (d.text || '打开失败')); })
+                .catch(function () { toast('打开失败（需要桌面版）'); });
+            };
+            chip.appendChild(btn);
+          }
+        }
         box.scrollTop = box.scrollHeight;
       },
       setReasoning: function (t) {
@@ -337,36 +360,46 @@
         if (kind === 'tool') {
           ui.addTool(payload.phase, payload.name, payload.phase === 'call'
             ? JSON.stringify(payload.args || {})
-            : (payload.ok ? '完成' : payload.text || '失败'));
+            : (payload.ok ? '完成' : payload.text || '失败'), payload.path);
         } else if (kind === 'error') {
           ui.error('服务端错误：' + payload.name);
         }
       }
     };
     setStopUI(true);
-    streamChat(
-      buildApiMessages(chat),
-      function (t) { ui.setReasoning(t); },
-      function (t) { ui.setContent(t); }
-    ).then(function () {
-      ui.finish();
-      chat.msgs.push({ role: 'ai', text: ui.answer, html: mdRender(ui.answer), reasoning: ui.reasoning });
-      setStopUI(false);
-      $('messages').scrollTop = $('messages').scrollHeight;
-    }).catch(function (e) {
-      const msg = errText(e);
-      if (msg === null) { // 主动停止：保留已生成部分
-        ui.finish();
-        if (ui.answer || ui.reasoning) {
-          chat.msgs.push({ role: 'ai', text: ui.answer + (ui.answer ? '\n\n*(已手动停止)*' : ''), html: mdRender(ui.answer) + (ui.answer ? '<p><i>（已手动停止）</i></p>' : ''), reasoning: ui.reasoning });
-        }
-        toast('已停止生成');
-      } else {
-        ui.error(msg);
-        toast(msg);
-      }
-      setStopUI(false);
-    });
+    // v3.3：发送前先做上下文压缩（同步折叠 + 可选的 LLM 摘要，见 compress.js）
+    Promise.resolve()
+      .then(function () {
+        let msgs = buildApiMessages(chat);
+        if (typeof window.RC_compressAsync === 'function') return window.RC_compressAsync(msgs);
+        return msgs;
+      })
+      .catch(function () { return buildApiMessages(chat); })
+      .then(function (msgs) {
+        streamChat(
+          msgs,
+          function (t) { ui.setReasoning(t); },
+          function (t) { ui.setContent(t); }
+        ).then(function () {
+          ui.finish();
+          chat.msgs.push({ role: 'ai', text: ui.answer, html: mdRender(ui.answer), reasoning: ui.reasoning });
+          setStopUI(false);
+          $('messages').scrollTop = $('messages').scrollHeight;
+        }).catch(function (e) {
+          const msg = errText(e);
+          if (msg === null) { // 主动停止：保留已生成部分
+            ui.finish();
+            if (ui.answer || ui.reasoning) {
+              chat.msgs.push({ role: 'ai', text: ui.answer + (ui.answer ? '\n\n*(已手动停止)*' : ''), html: mdRender(ui.answer) + (ui.answer ? '<p><i>（已手动停止）</i></p>' : ''), reasoning: ui.reasoning });
+            }
+            toast('已停止生成');
+          } else {
+            ui.error(msg);
+            toast(msg);
+          }
+          setStopUI(false);
+        });
+      });
   }
 
   /* ================= 覆盖假发送链路 → 真实对话 ================= */

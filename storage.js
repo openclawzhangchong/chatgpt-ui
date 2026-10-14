@@ -52,8 +52,9 @@
         const c = s.chats[k];
         tx('sessions', 'readwrite').put({
           id: k, title: c.title || '', sys: c.sys || null,
+          owner: c.owner || 'default',   // v3.3：多用户隔离字段（将来按 owner 过滤）
           msgs: c.msgs || [], updated_at: Date.now(),
-          // 预留：compressed / summary / owner（多会话隔离）字段
+          // 预留：compressed / summary / summarized_until_seq（上下文压缩）字段
           compressed: c.compressed || false
         });
       }

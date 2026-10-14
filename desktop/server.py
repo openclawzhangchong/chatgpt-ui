@@ -12,6 +12,7 @@ server.py · ChatGPT UI 桌面版本地服务
 TODO(Worker): API 配置与工具清单将来可改为从 Worker/数据库下发。
 """
 import os
+import re
 import sys
 import json
 import time
@@ -55,6 +56,14 @@ def load_config():
     return {}, None
 
 CFG, CFG_PATH = load_config()
+try:  # 诊断：把实际生效的配置来源写进崩溃日志（windowed 下无 stdout，这是唯一排查入口）
+    with open(os.path.join(os.environ.get('TEMP', '.'), 'ChatGPT-UI.log'), 'a', encoding='utf-8') as _f:
+        _f.write('[%s] config loaded from: %s | builtinMcp=%s | mcpServers=%d\n' % (
+            time.strftime('%Y-%m-%d %H:%M:%S'), CFG_PATH,
+            (CFG.get('builtinMcp') if isinstance(CFG, dict) else None),
+            len((CFG.get('mcpServers') or []) if isinstance(CFG, dict) else [])))
+except Exception:
+    pass
 PORT = int(CFG.get('port') or 18765)
 MAX_TOKENS = int(CFG.get('maxTokens') or 16384)
 TEMP = float(CFG.get('temperature') if CFG.get('temperature') is not None else 0.7)
@@ -183,7 +192,7 @@ async def chat_completions(request: Request):
     def gen():
         yield sse({'choices': [{'delta': {'role': 'assistant'}, 'index': 0}]})
         try:
-            for round_no in range(6):  # 最多 6 轮工具循环
+            for round_no in range(10):  # 最多 10 轮工具循环（复杂多步任务需要）
                 payload = {'model': MODEL, 'messages': msgs, 'stream': True,
                            'max_tokens': MAX_TOKENS, 'temperature': TEMP,
                            'tools': tools.schemas(), 'tool_choice': 'auto'}
@@ -215,8 +224,15 @@ async def chat_completions(request: Request):
                             args = {}
                         yield sse({'choices': [{'delta': {'rc_tool': {'phase': 'call', 'name': name, 'args': args}}, 'index': 0}]})
                         result = tools.execute(name, args)
+                        tool_path = (result.get('data') or {}).get('path') if isinstance(result.get('data'), dict) else None
+                        if not tool_path:
+                            # office/pdf/media 类工具直接返回路径字符串，兼容提取
+                            t = (result.get('text') or '').strip()
+                            if re.match(r'^[A-Za-z]:\\', t) and os.path.isfile(t):
+                                tool_path = t
                         yield sse({'choices': [{'delta': {'rc_tool': {'phase': 'result', 'name': name,
                                                                       'ok': result.get('ok'),
+                                                                      'path': tool_path,
                                                                       'text': (result.get('text') or '')[:600]}}, 'index': 0}]})
                         msgs.append({'role': 'tool', 'tool_call_id': assistant_msg['tool_calls'][i]['id'],
                                      'content': result.get('text') or ('' if result.get('ok') else '失败')})

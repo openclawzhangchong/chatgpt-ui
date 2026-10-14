@@ -1,8 +1,8 @@
 # ChatGPT UI —— ChatGPT 完美复刻（真实对话 · Python 桌面版）
 
-> 100% 还原 ChatGPT 官方界面观感，接入 OpenAI 兼容大模型 API **真实对话**；v3.2 起拥有 **37 个工具**（17 内建 + 14 本地自建 MCP + 6 远程 MCP），对话中 AI 可抓网页（含公众号）、生成/读取 Word/Excel/PPT、操作桌面文件、查天气、搜资料。
+> 100% 还原 ChatGPT 官方界面观感，接入 OpenAI 兼容大模型 API **真实对话**；v3.3 起拥有 **41 个工具**（17 内建 + 18 本地自建 MCP + 6 远程 MCP），对话中 AI 可抓网页（含公众号）、生成/读取 Word/Excel/PPT/PDF、二维码、操作桌面文件、查天气、搜资料，支持语音听说闭环。
 
-![Version](https://img.shields.io/badge/version-v3.2.0-19c37d) ![License](https://img.shields.io/badge/license-MIT-blue) ![Tech](https://img.shields.io/badge/stack-HTML%20%2B%20JS%20%2B%20Python%20%E5%A3%B3-orange) ![MCP](https://img.shields.io/badge/MCP%20tools-37-blueviolet) ![Frontend%20deps](https://img.shields.io/badge/frontend%20deps-0-success)
+![Version](https://img.shields.io/badge/version-v3.3.0-19c37d) ![License](https://img.shields.io/badge/license-MIT-blue) ![Tech](https://img.shields.io/badge/stack-HTML%20%2B%20JS%20%2B%20Python%20%E5%A3%B3-orange) ![MCP](https://img.shields.io/badge/MCP%20tools-41-blueviolet) ![Frontend%20deps](https://img.shields.io/badge/frontend%20deps-0-success)
 
 ## ✨ 项目简介
 
@@ -25,16 +25,17 @@
 
 - 🖥️ **单文件 EXE**：PyInstaller 打包，双击即用，Python 壳（pywebview + 本地服务）
 - 🖥️ **系统托盘**：关闭窗口不退出、退到托盘常驻；托盘菜单「显示主窗口 / 退出程序」
-- 🧰 **37 个工具**（17 内建 + 14 本地 MCP + 6 远程 MCP），对话中 AI 自动调用：
-  - 办公读写闭环：`create_word`/`create_excel`/`create_ppt` 生成 + `read_docx`/`read_xlsx`/`read_pptx` 读取（落盘桌面 `chatgpt-ui-exports/`）
+- 🧰 **41 个工具**（17 内建 + 18 本地 MCP + 6 远程 MCP），对话中 AI 自动调用：
+  - 办公读写闭环：`create_word`/`create_excel`/`create_ppt` 生成 + `read_docx`/`read_xlsx`/`read_pptx` 读取（落盘桌面 `chatgpt-ui-exports/`，气泡内**一键打开**）
+  - PDF 与媒体：`pdf_read`/`pdf_info`、`qr_generate`（二维码）、`image_info`
   - 网页抓取：`fetch_page_markdown`（**微信公众号/知乎/CSDN/掘金/简书/豆瓣/头条/B站**专用规则 → Markdown，实测公众号文章提取）、`web_search`（Bing）、`extract_links`
   - 文件系统：`search_files`（递归搜名/内容）、`file_hash`、`tree_directory`、`list_desktop_files`、`open_file`
   - 系统与生活：`system_info`/`current_time`/`get_weather`/`calculate`/`clipboard_read`/`clipboard_write`/`take_screenshot`/`open_url`
   - 开发辅助：`json_format`/`base64_codec`/`url_codec`/`regex_test`/`timestamp_convert`
   - **远程 MCP**（可选）：DeepWiki + Microsoft Learn；工具调用过程在气泡内可视化
 - 💾 **会话持久化**：IndexedDB 存储，刷新/重启不丢聊天记录
-- 🗜️ **上下文压缩**：超 8 万字符自动折叠较早图片与历史，始终保留系统提示与最近对话
-- 🔊 **朗读**：Edge TTS（联网）+ Windows SAPI 离线兜底
+- 🗜️ **上下文压缩**：超 8 万字符自动折叠较早图片与历史（LLM 生成摘要保留关键信息），始终保留系统提示与最近对话
+- 🔊 **语音听说闭环**：消息 🔊 朗读（Edge TTS + SAPI 离线兜底，四音色可选）；mic 语音输入（Web Speech API 中文识别 → 自动发送 → 回复自动播报）
 - 🧩 **菜单换血**：工具箱（工具清单+MCP连接状态）/ 导出中心（会话导出 Word、Markdown）/ 关于本应用
 
 **接入你自己的 MCP 服务器**（含魔搭 ModelScope）：编辑 EXE 旁的 `config.json`，在 `mcpServers` 数组填 URL 即可（支持 streamable HTTP / SSE / stdio 三种传输，与 Cherry Studio / Claude Desktop 配置同构）：
@@ -94,7 +95,8 @@ chatgpt-ui/
 ├── storage.js          # v3.0 IndexedDB 会话持久化
 ├── tts.js              # v3.0 朗读（Edge TTS / SAPI，走桌面端本地服务）
 ├── toolbox.js          # v3.0 菜单换血（工具箱 / 导出中心 / 关于）
-├── compress.js         # v3.1 上下文压缩（RC_compress 钩子）
+├── compress.js         # v3.1 上下文压缩（确定性折叠 + v3.3 LLM 摘要）
+├── voice.js            # v3.3 语音闭环（音色真实化 + Web Speech API 输入）
 ├── config.example.js   # 网页版 API 配置模板（入库）
 ├── config.js           # 网页版真实配置（gitignore，本地自建）
 ├── desktop/            # v3.0 Python 桌面版
@@ -103,7 +105,7 @@ chatgpt-ui/
 │   ├── tools.py        #   本地工具注册表 + 扩展装载入口
 │   ├── tools_extra.py  #   v3.1 新增 11 个内建工具
 │   ├── mcp_client.py   #   通用 MCP 客户端（HTTP / SSE / stdio 三传输）
-│   ├── mcp_servers/    #   v3.2 本地自建 MCP server 池（web/files/office/dev）
+│   ├── mcp_servers/    #   v3.2 本地自建 MCP server 池（web/files/office/dev/pdf/media）
 │   ├── build_desktop.py#   一键打包流水线（同步前端 → PyInstaller → 拷桌面）
 │   └── config.example.json
 ├── HANDOFF.md          # 交接清单：已完成基线 / 待办 / 红线
@@ -122,6 +124,7 @@ chatgpt-ui/
 | v3.0 | Python 桌面版 EXE + 本地 MCP 工具 + IndexedDB + Edge TTS | ✅ 已完成 |
 | v3.1 | 远程 MCP 客户端（DeepWiki/MS Learn 实测接通）+ 11 个新工具 + 系统托盘 + 上下文压缩 | ✅ 已完成 |
 | v3.2 | 本地自建 MCP server 池（web/files/office/dev 四服务器 14 工具）+ 公众号抓取实测 | ✅ 已完成 |
+| v3.3 | 产物预览卡片 + PDF/媒体工具 + 语音听说闭环 + LLM 摘要压缩 + EXE 图标（41 工具） | ✅ 已完成 |
 | v3.x | 上下文压缩（RC_compress 钩子已预留）/ 多会话隔离 | 📋 规划中 |
 | v3.x | API 配置改从 Worker / 数据库动态获取 | 📋 规划中 |
 | v4.0 | 安全加固（服务端代理 Key、对外部署） | 📋 规划中 |

@@ -2,13 +2,15 @@
 
 > 给下一次迭代的你（或下一次会话的我）：本页登记已完成基线 + 未完成事项 + 接手要点。
 
-## ✅ 当前基线（v3.2.0，2026-10-14）
+## ✅ 当前基线（v3.3.0，2026-10-14）
 
-- **网页版**：index.html（UI 框架，红线不动）+ realchat.js（真实对话）+ storage.js（IndexedDB）+ tts.js（朗读）+ toolbox.js（菜单换血）+ compress.js（上下文压缩）+ config.js（gitignore）。
-- **桌面版**：`desktop/` Python 壳——main.py（pywebview + **系统托盘** + uvicorn）+ server.py（OpenAI 兼容 SSE 代理 + 工具循环 + TTS + 导出）+ tools.py（注册表 + 扩展装载）+ tools_extra.py（11 内建）+ mcp_client.py（远程 MCP 客户端）+ **mcp_servers/（本地自建 MCP server 池）**。**已交付桌面 EXE，双击即用。**
-- **工具总数 37** = 17 内建 + 14 本地 MCP（web 3/files 3/office 3/dev 5）+ 6 远程 MCP（DeepWiki 3 + MS Learn 3）。config.json `builtinMcp` 控制本地 server 池开关。
-- **公众号抓取实测通过**（用户指定测试用例）：AI 自主调用 fetch_page_markdown 提取微信文章正文并准确概括。
-- **实测基线**：流式对话 / 思考折叠 / 多工具齐发 / 多步工具链 / Word+Excel 读写闭环 / 刷新持久化 / 托盘线程启动 / EXE 内 37 工具全装载。
+- **网页版**：index.html（UI 框架，红线不动）+ realchat.js（真实对话）+ storage.js（IndexedDB）+ tts.js（朗读）+ toolbox.js（菜单换血）+ compress.js（上下文压缩）+ voice.js（语音闭环）+ config.js（gitignore）。
+- **桌面版**：`desktop/` Python 壳——main.py（pywebview + **系统托盘** + uvicorn）+ server.py（OpenAI 兼容 SSE 代理 + 工具循环 + TTS + 导出 + 配置诊断日志）+ tools.py（注册表 + 扩展装载）+ tools_extra.py（11 内建）+ mcp_client.py（远程 MCP 客户端）+ **mcp_servers/（本地自建 MCP server 池：web/files/office/dev/pdf/media）**。**已交付桌面 EXE（含自定义图标），双击即用。**
+- **工具总数 41** = 17 内建 + 18 本地 MCP（web 3/files 3/office 3/dev 5/pdf 2/media 2）+ 6 远程 MCP（DeepWiki 3 + MS Learn 3）。
+- **产物预览卡片**：工具生成文件后气泡内显示文件名 +「📂 打开」按钮（实测点击唤起 WPS 打开 docx）。
+- **语音闭环**：音色四选一持久化 + Web Speech API 中文识别输入 + 回复自动播报（STT 需麦克风环境，待用户真机验证）。
+- **LLM 摘要压缩**：超 8 万字符触发，被裁历史调模型生成 200 字摘要注入上下文。
+- **实测基线**：流式对话 / 思考折叠 / 多工具齐发 / 多步工具链 / Word+Excel+PPT 读写闭环 / PDF 读取 / 二维码生成 / 产物打开按钮 / 刷新持久化 / 托盘 / EXE 41 工具全装载。
 
 ## 🧭 关键架构事实（接手必读）
 

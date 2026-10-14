@@ -21,7 +21,7 @@ DESKTOP_CANDIDATES = [
     os.path.join(os.path.expanduser('~'), 'OneDrive', 'Desktop'),
 ]
 
-FRONTEND_FILES = ['index.html', 'realchat.js', 'storage.js', 'tts.js', 'toolbox.js', 'compress.js', 'config.example.js']
+FRONTEND_FILES = ['index.html', 'realchat.js', 'storage.js', 'tts.js', 'toolbox.js', 'compress.js', 'voice.js', 'config.example.js']
 
 
 def step_sync_ui():
@@ -54,6 +54,7 @@ def step_pyinstaller():
     args = [
         sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean',
         '--onefile', '--windowed', '--name', NAME,
+        '--icon', os.path.join(HERE, 'app.ico'),
         '--add-data', os.path.join(UI) + ';ui',
         '--add-data', os.path.join(HERE, 'config.json') + ';.',
         '--collect-all', 'webview',
@@ -65,7 +66,8 @@ def step_pyinstaller():
         # 本地 MCP server 池是 importlib 动态导入，必须显式列出父包+子模块（collect-submodules 不带父包）
         '--hidden-import', 'mcp_servers', '--hidden-import', 'mcp_servers.web',
         '--hidden-import', 'mcp_servers.files', '--hidden-import', 'mcp_servers.office',
-        '--hidden-import', 'mcp_servers.dev',
+        '--hidden-import', 'mcp_servers.dev', '--hidden-import', 'mcp_servers.pdf',
+        '--hidden-import', 'mcp_servers.media',
         '--distpath', os.path.join(HERE, 'dist'),
         '--workpath', os.path.join(HERE, 'build'),
         '--specpath', HERE,
@@ -92,8 +94,26 @@ def step_deploy():
     print('      配置文件：%s' % cfg_dest)
 
 
+def step_make_icon():
+    """生成 EXE/托盘同款图标（绿色圆角块 + 白色 A），多尺寸 ico。"""
+    try:
+        from PIL import Image, ImageDraw
+        path = os.path.join(HERE, 'app.ico')
+        img = Image.new('RGBA', (256, 256), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+        d.rounded_rectangle([12, 12, 244, 244], radius=52, fill=(16, 185, 129, 255))
+        d.rectangle([88, 76, 116, 178], fill=(255, 255, 255, 255))
+        d.line([116, 178, 172, 76], fill=(255, 255, 255, 255), width=26)
+        d.line([138, 138, 206, 138], fill=(255, 255, 255, 255), width=20)
+        img.save(path, sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+        print('  app.ico 已生成')
+    except Exception as e:
+        print('  app.ico 生成失败（不影响打包）：', e)
+
+
 if __name__ == '__main__':
     print('[0/3] ChatGPT UI 桌面版打包开始')
+    step_make_icon()
     step_sync_ui()
     step_pyinstaller()
     step_deploy()
