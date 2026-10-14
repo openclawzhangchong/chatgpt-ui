@@ -256,18 +256,19 @@
       var el = document.createElement('div');
       el.className = 'row-edit' + (p.enabled ? '' : ' off');
       el.innerHTML = '<div class="row-grid">'
-        + '<input data-f="avatar" maxlength="4" title="图标（emoji）" value="' + esc(p.avatar || '') + '" placeholder="🤖">'
-        + '<input data-f="name" maxlength="24" placeholder="显示名" value="' + esc(p.name || '') + '">'
-        + '<input data-f="desc" maxlength="60" placeholder="一句话说明（显示在选择卡片上）" value="' + esc(p.desc || '') + '"></div>'
+        + '<input class="av" type="text" data-f="avatar" maxlength="4" title="图标（emoji）" value="' + esc(p.avatar || '') + '" placeholder="🤖">'
+        + '<input type="text" data-f="name" maxlength="24" placeholder="显示名" value="' + esc(p.name || '') + '">'
+        + '<input type="text" data-f="desc" maxlength="60" placeholder="一句话说明（显示在选择卡片上）" value="' + esc(p.desc || '') + '"></div>'
         + '<textarea data-f="prompt" placeholder="人设系统提示词（最多 3000 字）">' + esc(p.prompt || '') + '</textarea>'
         + '<div class="row-foot">'
-        + '<label class="chk"><input type="checkbox" data-f="enabled" ' + (p.enabled ? 'checked' : '') + '>启用</label>'
-        + '<span class="hint">顺序</span><input data-f="sort" type="number" min="0" max="999" value="' + (p.sort || 0) + '">'
-        + (p.builtin ? '<span class="badge builtin">预置</span>' : '')
+        + '<label class="sw"><input type="checkbox" data-f="enabled" ' + (p.enabled ? 'checked' : '') + '>'
+        + '<span class="sw-trk"><span class="sw-thb"></span></span>启用</label>'
+        + '<span class="num-wrap">顺序<input data-f="sort" type="number" min="0" max="999" value="' + (p.sort || 0) + '"></span>'
+        + (p.builtin ? '<span class="badge preset">预置</span>' : '')
         + '<span class="grow"></span>'
-        + '<button class="btn ghost sm" data-a="up" ' + (i === 0 ? 'disabled' : '') + '>↑</button>'
-        + '<button class="btn ghost sm" data-a="down" ' + (i === psRows.length - 1 ? 'disabled' : '') + '>↓</button>'
-        + '<button class="btn ghost sm" data-a="del">删除</button></div>';
+        + '<button class="ib" data-a="up" title="上移" ' + (i === 0 ? 'disabled' : '') + '>↑</button>'
+        + '<button class="ib" data-a="down" title="下移" ' + (i === psRows.length - 1 ? 'disabled' : '') + '>↓</button>'
+        + '<button class="ib del" data-a="del" title="删除">✕</button></div>';
       bindRowInputs(el, psRows, i, psPaint);
       box.appendChild(el);
     });
@@ -300,16 +301,16 @@
       var el = document.createElement('div');
       el.className = 'row-edit' + (s0.enabled ? '' : ' off');
       el.innerHTML = '<div class="row-grid2">'
-        + '<input data-f="title" maxlength="24" placeholder="标题" value="' + esc(s0.title || '') + '">'
-        + '<label class="chk" style="padding-bottom:8px"><input type="checkbox" data-f="enabled" ' + (s0.enabled ? 'checked' : '') + '>启用</label>'
-        + '<span></span></div>'
-        + '<textarea data-f="prompt" placeholder="点击后填入输入框的提示词" style="min-height:44px">' + esc(s0.prompt || '') + '</textarea>'
+        + '<input type="text" data-f="title" maxlength="24" placeholder="卡片标题" value="' + esc(s0.title || '') + '">'
+        + '<label class="sw"><input type="checkbox" data-f="enabled" ' + (s0.enabled ? 'checked' : '') + '>'
+        + '<span class="sw-trk"><span class="sw-thb"></span></span>启用</label></div>'
+        + '<textarea data-f="prompt" placeholder="点击后填入输入框的提示词" style="min-height:48px">' + esc(s0.prompt || '') + '</textarea>'
         + '<div class="row-foot">'
-        + '<span class="hint">顺序</span><input data-f="sort" type="number" min="0" max="999" value="' + (s0.sort || 0) + '">'
+        + '<span class="num-wrap">顺序<input data-f="sort" type="number" min="0" max="999" value="' + (s0.sort || 0) + '"></span>'
         + '<span class="grow"></span>'
-        + '<button class="btn ghost sm" data-a="up" ' + (i === 0 ? 'disabled' : '') + '>↑</button>'
-        + '<button class="btn ghost sm" data-a="down" ' + (i === stRows.length - 1 ? 'disabled' : '') + '>↓</button>'
-        + '<button class="btn ghost sm" data-a="del">删除</button></div>';
+        + '<button class="ib" data-a="up" title="上移" ' + (i === 0 ? 'disabled' : '') + '>↑</button>'
+        + '<button class="ib" data-a="down" title="下移" ' + (i === stRows.length - 1 ? 'disabled' : '') + '>↓</button>'
+        + '<button class="ib del" data-a="del" title="删除">✕</button></div>';
       bindRowInputs(el, stRows, i, stPaint);
       box.appendChild(el);
     });
@@ -432,9 +433,13 @@
     box.innerHTML = '';
     Object.keys(BM_LABELS).forEach(function (k) {
       var l = document.createElement('label');
-      l.className = 'chk';
-      l.innerHTML = '<input type="checkbox" ' + (bmState[k] ? 'checked' : '') + '> ' + BM_LABELS[k];
-      l.querySelector('input').addEventListener('change', function (e) { bmState[k] = e.target.checked; });
+      l.className = 'bm-card' + (bmState[k] ? ' on' : '');
+      l.innerHTML = '<input type="checkbox" ' + (bmState[k] ? 'checked' : '') + '>'
+        + '<span class="bm-dot"></span>' + BM_LABELS[k];
+      l.querySelector('input').addEventListener('change', function (e) {
+        bmState[k] = e.target.checked;
+        l.classList.toggle('on', e.target.checked);
+      });
       box.appendChild(l);
     });
   }
@@ -444,11 +449,11 @@
     rmRows.forEach(function (m, i) {
       var el = document.createElement('div');
       el.className = 'row-edit';
-      el.innerHTML = '<div class="row-grid" style="grid-template-columns:110px 1fr 40px">'
-        + '<input data-f="name" maxlength="30" placeholder="名称" value="' + esc(m.name || '') + '">'
-        + '<input data-f="url" placeholder="https://…（MCP 端点地址）" value="' + esc(m.url || '') + '">'
-        + '<button class="btn ghost sm" data-a="del" title="删除">✕</button></div>'
-        + '<input data-f="comment" maxlength="80" placeholder="备注（选填）" value="' + esc(m.comment || '') + '">';
+      el.innerHTML = '<div class="row-grid" style="grid-template-columns:110px 1fr 30px">'
+        + '<input type="text" data-f="name" maxlength="30" placeholder="名称" value="' + esc(m.name || '') + '">'
+        + '<input type="text" data-f="url" placeholder="https://…（MCP 端点地址）" value="' + esc(m.url || '') + '">'
+        + '<button class="ib del" data-a="del" title="删除">✕</button></div>'
+        + '<input type="text" data-f="comment" maxlength="80" placeholder="备注（选填）" value="' + esc(m.comment || '') + '">';
       el.querySelectorAll('[data-f]').forEach(function (inp) {
         inp.addEventListener('input', function () { rmRows[i][inp.dataset.f] = inp.value; });
       });

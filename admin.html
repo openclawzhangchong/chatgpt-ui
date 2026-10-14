@@ -21,11 +21,13 @@
   code { font-family: Consolas, "Courier New", monospace; font-size: 12px;
     background: var(--bg-2); padding: 1px 6px; border-radius: 4px; }
   input, select, textarea { font-family: inherit; }
-  .field input, .field select, .field textarea { width: 100%; padding: 8px 11px;
-    border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
-    color: var(--text); font-size: 13.5px; outline: none; }
-  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
-  .field label { display: block; font-size: 12.5px; color: var(--text-2); margin-bottom: 4px; }
+  .field input, .field select, .field textarea { width: 100%; height: 36px; padding: 0 12px;
+    border: 1px solid var(--border); border-radius: 9px; background: var(--bg);
+    color: var(--text); font-size: 13.5px; outline: none; transition: border-color .15s, box-shadow .15s; }
+  .field textarea { height: auto; padding: 9px 12px; line-height: 1.6; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(25,195,125,.13); }
+  .field input::placeholder, .field textarea::placeholder { color: var(--text-3); }
+  .field label { display: block; font-size: 12.5px; color: var(--text-2); margin-bottom: 5px; }
   .field { margin-bottom: 12px; }
 
   /* —— 登录闸门 —— */
@@ -38,8 +40,9 @@
   .gate-card h1 { font-size: 20px; margin-bottom: 4px; }
   .gate-card .sub { color: var(--text-2); font-size: 13px; margin-bottom: 22px; }
   .btn { padding: 8px 15px; border: none; border-radius: 8px; font-size: 13.5px;
-    background: var(--accent); color: #fff; }
-  .btn:hover { background: var(--accent-2); }
+    background: var(--accent); color: #fff; transition: background .15s, box-shadow .15s, transform .1s; }
+  .btn:hover { background: var(--accent-2); box-shadow: 0 2px 8px rgba(25,195,125,.35); }
+  .btn:active { transform: translateY(1px); }
   .btn.block { width: 100%; }
   .btn.ghost { background: transparent; color: var(--text-2); border: 1px solid var(--border); }
   .btn.ghost:hover { background: var(--bg-hover); color: var(--text); }
@@ -78,7 +81,9 @@
   .sec .desc { color: var(--text-2); font-size: 13px; margin-bottom: 16px; }
 
   .card { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px;
-    border: 1px solid var(--border); border-radius: 11px; padding: 14px 16px; margin-bottom: 12px; }
+    border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px;
+    background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,.04); transition: border-color .15s, box-shadow .15s; }
+  .card:hover { border-color: #cfcfd4; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
   .card.off { opacity: .62; }
   .card .nm { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .card .meta { color: var(--text-2); font-size: 12.5px; margin-top: 3px; word-break: break-all; }
@@ -91,18 +96,60 @@
   .badge.def { background: rgba(242,163,60,.16); color: #c47f1f; }
   .empty { color: var(--text-3); font-size: 13px; text-align: center; padding: 26px 0; }
 
-  /* 行编辑（人设/卡片/MCP 远程列表通用） */
-  .row-edit { border: 1px solid var(--border); border-radius: 11px; padding: 12px 14px; margin-bottom: 10px; }
-  .row-edit.off { opacity: .6; }
-  .row-grid { display: grid; grid-template-columns: 52px 1fr 1fr; gap: 8px; margin-bottom: 8px; }
-  .row-grid2 { display: grid; grid-template-columns: 1fr 110px 96px; gap: 8px; align-items: end; }
-  .row-foot { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+  /* 行编辑（人设/卡片/MCP 远程列表通用）——现代控件规范 */
+  .row-edit { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px;
+    margin-bottom: 12px; background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    transition: border-color .15s, box-shadow .15s; }
+  .row-edit:hover { border-color: #cfcfd4; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  .row-edit.off { opacity: .62; }
+  .row-grid { display: grid; grid-template-columns: 44px 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .row-grid2 { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; margin-bottom: 10px; }
+  .row-foot { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding-top: 10px;
+    border-top: 1px dashed var(--border); flex-wrap: wrap; }
   .row-foot .grow { flex: 1; }
-  .row-foot input[type=number] { width: 72px; padding: 4px 8px; border: 1px solid var(--border);
-    border-radius: 7px; background: var(--bg); color: var(--text); font-size: 12.5px; }
-  .row-foot textarea { width: 100%; min-height: 56px; resize: vertical; padding: 7px 10px;
-    border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text);
-    font-size: 12.5px; outline: none; }
+  .row-foot input[type=number] { width: 64px; padding: 5px 9px; border: 1px solid var(--border);
+    border-radius: 7px; background: var(--bg); color: var(--text); font-size: 12.5px; outline: none; }
+  .row-edit textarea, .row-edit input[type=text], .row-edit input[type=number] { width: 100%; }
+  .row-edit textarea { min-height: 60px; resize: vertical; padding: 8px 11px;
+    border: 1px solid var(--border); border-radius: 9px; background: var(--bg); color: var(--text);
+    font-size: 13px; line-height: 1.6; outline: none; transition: border-color .15s, box-shadow .15s; }
+  .row-edit textarea:focus, .row-edit input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(25,195,125,.13); }
+  .row-edit input[type=text], .row-edit input[type=number] { height: 36px; padding: 0 12px;
+    border: 1px solid var(--border); border-radius: 9px; background: var(--bg); color: var(--text);
+    font-size: 13.5px; outline: none; transition: border-color .15s, box-shadow .15s; }
+  .row-edit input::placeholder, .row-edit textarea::placeholder { color: var(--text-3); }
+  input.av { height: 44px !important; text-align: center; font-size: 19px; padding: 0 !important; }
+  .num-wrap { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-2);
+    flex-shrink: 0; white-space: nowrap; }
+  /* iOS 风 toggle（替代原生 checkbox） */
+  .sw { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2);
+    cursor: pointer; user-select: none; flex-shrink: 0; }
+  .sw input { display: none; }
+  .sw-trk { width: 36px; height: 21px; border-radius: 11px; background: #c9c9cf; position: relative;
+    transition: background .18s; flex-shrink: 0; }
+  .sw-thb { position: absolute; top: 2.5px; left: 2.5px; width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: left .18s; }
+  .sw input:checked + .sw-trk { background: var(--accent); }
+  .sw input:checked + .sw-trk .sw-thb { left: 17.5px; }
+  /* 小图标按钮（↑ ↓ 删除） */
+  .ib { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text-2);
+    font-size: 14px; transition: all .13s; }
+  .ib:hover:not(:disabled) { background: var(--bg-hover); color: var(--text); border-color: #cfcfd4; }
+  .ib:disabled { opacity: .35; cursor: not-allowed; }
+  .ib.del:hover { background: rgba(229,72,77,.1); color: var(--danger); border-color: rgba(229,72,77,.4); }
+  .badge.preset { background: rgba(93,143,214,.12); color: #5d8fd6; }
+  /* MCP 六组卡片式开关 */
+  #bmList { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  @media (max-width: 900px) { #bmList { grid-template-columns: repeat(2, 1fr); } }
+  .bm-card { display: flex; align-items: center; gap: 9px; padding: 11px 13px; border: 1px solid var(--border);
+    border-radius: 10px; background: var(--bg); cursor: pointer; font-size: 13px; color: var(--text-2);
+    transition: all .15s; user-select: none; }
+  .bm-card input { display: none; }
+  .bm-card:hover { border-color: #cfcfd4; }
+  .bm-card.on { border-color: var(--accent); background: rgba(25,195,125,.07); color: var(--text); }
+  .bm-card .bm-dot { width: 8px; height: 8px; border-radius: 50%; background: #c9c9cf; flex-shrink: 0; transition: background .15s; }
+  .bm-card.on .bm-dot { background: var(--accent); }
   .chk { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--text-2); cursor: pointer; }
   .hint { font-size: 12px; color: var(--text-3); margin-top: 3px; }
 
